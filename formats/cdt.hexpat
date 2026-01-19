@@ -50,6 +50,7 @@ enum TraversalMode : u32 {
     Recursive = 2
 };
 
+// btQuantizedBvh::deSerializeInPlace()
 // https://github.com/vancegroup-mirrors/bullet-physics/blob/bullet-2.76/src/BulletCollision/BroadphaseCollision/btQuantizedBvh.cpp#L1031
 struct Bvh {
     Vec3 aabb_min;
