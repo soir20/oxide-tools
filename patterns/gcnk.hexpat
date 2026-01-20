@@ -1,5 +1,6 @@
 import hex.dec;
 import type.magic;
+#include "gcnk_collision.hexpat"
 
 std::mem::Section decompressed_chunk = std::mem::create_section("Decompressed chunk data");
 std::mem::Section decompressed_collision = std::mem::create_section("Decompressed collision data");
@@ -23,7 +24,7 @@ struct Gcnk {
         hex::dec::zlib_decompress(compressed_collision, decompressed_collision) == compressed_collision_len,
         "Decompressed too little or too much collision data"
     );
-    
+    GcnkCollision collision @ 0x00 in decompressed_collision;
 };
 
 Gcnk gcnk @ 0x00;
