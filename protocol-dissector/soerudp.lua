@@ -115,11 +115,11 @@ string.starts_with = function(self, prefix)
 end
 
 -- Try decompressing
-zlib = require('zlib')
+zlib = require('LibDeflate')
 function inflate(input)
     local byte_array = input:bytes(3) -- Skip opcode and zflag
     byte_array:set_size(byte_array:len() - 2) -- Skip CRC footer; NOTE: ocassionally 3
-    return zlib.inflate()(byte_array:raw()) -- Convert ByteArray to String and inflate
+    return zlib:DecompressZlib(byte_array:raw()) -- Convert ByteArray to String and inflate
 end
 
 function soe_session_request(buffer, subtree)
