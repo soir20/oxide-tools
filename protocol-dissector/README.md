@@ -1,5 +1,5 @@
 # protocol-dissector
-Wireshark dissector for SOE's Reliable UDP protocol version 3 (version string `CGAPI_527`). 
+Wireshark dissector for SOE's Reliable UDP protocol version 3 (version string `CGAPI_527`).
 Modified version of `https://github.com/misterupkeep/soe-dissector`.
 
 ## Dependencies
