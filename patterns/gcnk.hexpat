@@ -7,18 +7,18 @@ std::mem::Section decompressed_collision = std::mem::create_section("Decompresse
 
 struct Gcnk {
     type::Magic<"GCNK"> magic;
-    u32 version;
+    s32 version;
     
-    u32 decompressed_chunk_len;
-    u32 compressed_chunk_len;
+    s32 decompressed_chunk_len;
+    s32 compressed_chunk_len;
     u8 compressed_chunk[compressed_chunk_len];
     std::assert(
         hex::dec::zlib_decompress(compressed_chunk, decompressed_chunk) == compressed_chunk_len,
         "Decompressed too little or too much chunk data"
     );
     
-    u32 decompressed_collision_len;
-    u32 compressed_collision_len;
+    s32 decompressed_collision_len;
+    s32 compressed_collision_len;
     u8 compressed_collision[compressed_collision_len];
     std::assert(
         hex::dec::zlib_decompress(compressed_collision, decompressed_collision) == compressed_collision_len,
