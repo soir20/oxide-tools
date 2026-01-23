@@ -215,7 +215,7 @@ function parse_packet(buffer, subtree, _recursive)
 	subtree:add(packet_type, buffer(0,2))
     end
 
-    local opcode = soe_opcodes[buffer(0,2):uint()]
+    local opcode = soe_opcodes[buffer(0,2):uint()] or ""
 
     if opcode == "SOE_SESSION_REQUEST" then
 	soe_session_request(buffer, subtree)
