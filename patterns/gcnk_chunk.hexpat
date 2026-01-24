@@ -1,4 +1,12 @@
+import type.color;
+
 s32 version in;
+
+struct Vec3 {
+    float x;
+    float y;
+    float z;
+};
 
 struct Vec4 {
     float x;
@@ -40,15 +48,30 @@ struct RuntimeObject {
 };
 
 struct RawLight {
-
+    char name[];
+    char color_name[];
+    u8 type;
+    Vec4 pos;
+    float range;
+    float intensity;
+    type::RGB4444 color;
 };
 
 struct RawArea {
-
+    char name[];
+    s32 unknown1;
+    char unknown2[];
+    Vec4 unknown3;
+    Vec4 unknown4;
+    float unknown5;
+    Vec3 unknown6;
 };
 
 struct RawGroup {
-
+    char unknown1[];
+    Vec4 unknown2;
+    Vec4 unknown3;
+    s32 unknown4;
 };
 
 struct Tile {
@@ -67,14 +90,14 @@ struct Tile {
     s32 eco_data[eco_data_count];
     s32 runtime_obj_count;
     RuntimeObject runtime_objs[runtime_obj_count];
-    /*s32 lights_count;
+    s32 lights_count;
     RawLight lights[lights_count];
     s32 area_count;
     RawArea areas[area_count];
     s32 group_count;
     RawGroup groups[group_count];
     s32 index;
-    padding[4];*/
+    padding[4];
 };
 
 struct RenderBatch {
@@ -95,7 +118,7 @@ struct VertexBuffer {
 
 struct GcnkChunk {
     s32 tile_count;
-    Tile tiles[1];
+    Tile tiles[tile_count];
 };
 
 GcnkChunk chunk @ 0x00;
