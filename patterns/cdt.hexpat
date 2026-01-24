@@ -1,3 +1,4 @@
+import type.magic;
 #include "bvh.hexpat"
 
 bitfield CollisionType {
@@ -30,8 +31,7 @@ struct CollisionDataEntry {
 };
 
 struct Cdt {
-    // CDTA (exact case match)
-    char magic[0x4];
+    type::Magic<"CDTA"> magic;
     // always 1
     u32 version;
     // handled at 00ea42c0, 00ea3fcb, 00d87bd0
