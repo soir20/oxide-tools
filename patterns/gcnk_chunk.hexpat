@@ -101,24 +101,38 @@ struct Tile {
 };
 
 struct RenderBatch {
-
+    s32 index_offset;
+    s32 index_count;
+    s32 vertex_offset;
+    s32 vertex_count;
 };
 
 struct DetailMasks {
 
 };
 
-struct IndexBuffer {
-
-};
-
-struct VertexBuffer {
-
+struct Vertex {
+    Vec3 pos;
+    u8 normal[4];
+    type::RGB4444 color;
+    type::RGB4444 color2;
+    u16 tex_coord[2];
+    u16 tex_coord2[2];
 };
 
 struct GcnkChunk {
     s32 tile_count;
     Tile tiles[tile_count];
+    s32 render_batch_count;
+    RenderBatch render_batches[render_batch_count];
+    s32 detail_mask_count;
+    if (version >= 4) {
+        //
+    }
+    s32 index_count;
+    u16 indices[index_count];
+    s32 vertex_count;
+    
 };
 
 GcnkChunk chunk @ 0x00;
