@@ -2,7 +2,7 @@
 #include "bvh.hexpat"
 
 struct GcnkCollisionEntry {
-    u32 len;
+    s32 len;
     padding[28];
     Bvh bvh;
 };

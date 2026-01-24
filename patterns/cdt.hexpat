@@ -18,13 +18,13 @@ struct Triangle {
 };
 
 struct CollisionDataEntry {
-    u32 should_skip_entry;
+    s32 should_skip_entry;
     if (!should_skip_entry) {
-        u32 vertex_count;
+        s32 vertex_count;
         Vertex vertices[vertex_count];
-        u32 triangle_count;
+        s32 triangle_count;
         Triangle triangles[triangle_count];
-        u32 bvh_byte_count;
+        s32 bvh_byte_count;
         padding[16];
         Bvh bvh_data;
     }
@@ -33,11 +33,11 @@ struct CollisionDataEntry {
 struct Cdt {
     type::Magic<"CDTA"> magic;
     // always 1
-    u32 version;
+    s32 version;
     // handled at 00ea42c0, 00ea3fcb, 00d87bd0
     CollisionType collision_type;
     // always 1
-    u32 entry_count;
+    s32 entry_count;
     CollisionDataEntry data[entry_count];
 };
 
