@@ -135,7 +135,11 @@ struct GcnkChunk {
             // detail_mask_channels == 4 -> four 4-bit channels (RGBA4444)
             u8 detail_mask_pixels[detail_mask_size * detail_mask_size * detail_mask_channels / 2];
         } else {
-            //
+            // Channels are 8 bits each.
+            // detail_mask_channels == 1 -> single 8-bit channel (R8)
+            // detail_mask_channels == 2 -> two 8-bit channels (RG88)
+            // detail_mask_channels == 4 -> four 8-bit channels (RGBA8888)
+            u8 detail_mask_pixels[detail_mask_size * detail_mask_size * detail_mask_channels];
         }
     }
     s32 index_count;
