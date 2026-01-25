@@ -107,10 +107,6 @@ struct RenderBatch {
     s32 vertex_count;
 };
 
-struct DetailMasks {
-
-};
-
 struct Vertex {
     Vec3 pos;
     u8 normal[4];
