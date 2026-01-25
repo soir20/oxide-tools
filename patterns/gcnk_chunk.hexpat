@@ -5,7 +5,7 @@ import type.color;
 
 struct RuntimeObjectNode {
     s32 len;
-    u8 data[len * 4];
+    u32 data[len];
 };
 
 struct RuntimeObject {
