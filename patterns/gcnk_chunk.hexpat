@@ -1,19 +1,7 @@
+#pragma once
+
 import type.color;
-
-s32 version in;
-
-struct Vec3 {
-    float x;
-    float y;
-    float z;
-};
-
-struct Vec4 {
-    float x;
-    float y;
-    float z;
-    float w;
-};
+#include "vec.hexpat"
 
 struct RuntimeObjectNode {
     s32 len;
@@ -144,4 +132,5 @@ struct GcnkChunk {
     Vertex vertices[vertex_count];
 };
 
-GcnkChunk chunk @ 0x00;
+// s32 version in;
+// GcnkChunk chunk @ 0x00;

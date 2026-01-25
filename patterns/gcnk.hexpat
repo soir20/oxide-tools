@@ -1,3 +1,5 @@
+#pragma once
+
 import hex.dec;
 import type.magic;
 #include "gcnk_collision.hexpat"
@@ -16,6 +18,7 @@ struct Gcnk {
         hex::dec::zlib_decompress(compressed_chunk, decompressed_chunk) == compressed_chunk_len,
         "Decompressed too little or too much chunk data"
     );
+    GcnkChunk chunk @ 0x00 in decompressed_chunk;
     
     s32 decompressed_collision_len;
     s32 compressed_collision_len;

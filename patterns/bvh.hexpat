@@ -1,13 +1,10 @@
-struct Vec3 {
-    float x;
-    float y;
-    float z;
-    float w;
-};
+#pragma once
+
+#include "vec.hexpat"
 
 struct Node {
-    Vec3 aabb_min_org;
-    Vec3 aabb_max_org;
+    Vec4 aabb_min_org;
+    Vec4 aabb_max_org;
     s32 escape_index;
     s32 sub_part;
     s32 triangle_index;
@@ -37,9 +34,9 @@ enum TraversalMode : u32 {
 // btQuantizedBvh::deSerializeInPlace()
 // https://github.com/vancegroup-mirrors/bullet-physics/blob/bullet-2.76/src/BulletCollision/BroadphaseCollision/btQuantizedBvh.cpp#L1031
 struct Bvh {
-    Vec3 aabb_min;
-    Vec3 aabb_max;
-    Vec3 quantization;
+    Vec4 aabb_min;
+    Vec4 aabb_max;
+    Vec4 quantization;
     s32 bullet_version;
     s32 node_count;
     bool use_quantization;
