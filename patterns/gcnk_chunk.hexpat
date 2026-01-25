@@ -125,14 +125,23 @@ struct GcnkChunk {
     Tile tiles[tile_count];
     s32 render_batch_count;
     RenderBatch render_batches[render_batch_count];
-    s32 detail_mask_count;
-    if (version >= 4) {
-        //
+    s32 detail_mask_channels;
+    if (detail_mask_channels > 0) {
+        s32 detail_mask_size;
+        if (version >= 4) {
+            // Channels are 4 bits each.
+            // detail_mask_channels == 1 -> single 4-bit channel (R4)
+            // detail_mask_channels == 2 -> two 4-bit channels (RG44)
+            // detail_mask_channels == 4 -> four 4-bit channels (RGBA4444)
+            u8 detail_mask_pixels[detail_mask_size * detail_mask_size * detail_mask_channels / 2];
+        } else {
+            //
+        }
     }
     s32 index_count;
     u16 indices[index_count];
     s32 vertex_count;
-    
+    Vertex vertices[vertex_count];
 };
 
 GcnkChunk chunk @ 0x00;
