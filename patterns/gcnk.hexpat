@@ -2,6 +2,7 @@
 
 import hex.dec;
 import type.magic;
+#include "gcnk_chunk.hexpat"
 #include "gcnk_collision.hexpat"
 
 std::mem::Section decompressed_chunk = std::mem::create_section("Decompressed chunk data");
