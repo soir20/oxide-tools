@@ -9,12 +9,6 @@ bitfield CollisionType {
     bool disable_camera_collision: 1;
 };
 
-struct Vertex {
-    float x;
-    float y;
-    float z;
-};
-
 struct Triangle {
     u16 indices[3];
 };
@@ -23,7 +17,7 @@ struct CollisionDataEntry {
     s32 should_skip_entry;
     if (!should_skip_entry) {
         s32 vertex_count;
-        Vertex vertices[vertex_count];
+        Vec3 vertices[vertex_count];
         s32 triangle_count;
         Triangle triangles[triangle_count];
         s32 bvh_byte_count;
