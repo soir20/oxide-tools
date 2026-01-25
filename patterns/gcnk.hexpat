@@ -11,6 +11,8 @@ std::mem::Section decompressed_collision = std::mem::create_section("Decompresse
 struct Gcnk {
     type::Magic<"GCNK"> magic;
     s32 version;
+    // Set the version for the GCNK chunk pattern
+    gcnk_version = version;
     
     s32 decompressed_chunk_len;
     s32 compressed_chunk_len;

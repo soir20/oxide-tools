@@ -15,7 +15,7 @@ struct RuntimeObject {
     Vec4 pos;
     Vec4 rot;
     float scale;
-    if (version >= 6) {
+    if (gcnk_version >= 6) {
         char texture_alias[];
         char tint_alias[];
         if (tint_alias[0] != '\0') {
@@ -23,13 +23,13 @@ struct RuntimeObject {
         }
     }
     padding[4];
-    if (version >= 5) {
+    if (gcnk_version >= 5) {
         u32 terrain_object_id;
     } else {
         char unknown4[];
     }
     s32 unknown5;
-    if (version >= 3) {
+    if (gcnk_version >= 3) {
         s32 node_count;
         RuntimeObjectNode nodes[node_count];
     }
@@ -112,7 +112,7 @@ struct GcnkChunk {
     s32 detail_mask_channels;
     if (detail_mask_channels > 0) {
         s32 detail_mask_size;
-        if (version >= 4) {
+        if (gcnk_version >= 4) {
             // Channels are 4 bits each.
             // detail_mask_channels == 1 -> single 4-bit channel (R4)
             // detail_mask_channels == 2 -> two 4-bit channels (RG44)
@@ -132,5 +132,5 @@ struct GcnkChunk {
     Vertex vertices[vertex_count];
 };
 
-// s32 version in;
+s32 gcnk_version = 0;
 // GcnkChunk chunk @ 0x00;
