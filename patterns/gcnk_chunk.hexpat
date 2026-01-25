@@ -98,8 +98,8 @@ struct RenderBatch {
 struct Vertex {
     Vec3 pos;
     u8 normal[4];
-    type::RGB4444 color;
-    type::RGB4444 color2;
+    type::RGBA8 color;
+    type::RGBA8 color2;
     u16 tex_coord[2];
     u16 tex_coord2[2];
 };
