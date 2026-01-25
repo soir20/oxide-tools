@@ -42,7 +42,7 @@ struct RawLight {
     Vec4 pos;
     float range;
     float intensity;
-    type::RGB4444 color;
+    type::RGBA8 color;
 };
 
 struct RawArea {
