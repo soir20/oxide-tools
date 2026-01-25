@@ -3,7 +3,7 @@
 import type.color;
 #include "vec.hexpat"
 
-struct RuntimeObjectNode {
+struct RuntimeObjectRefArray {
     s32 len;
     u32 data[len];
 };
@@ -30,8 +30,8 @@ struct RuntimeObject {
     }
     s32 unknown5;
     if (gcnk_version >= 3) {
-        s32 node_count;
-        RuntimeObjectNode nodes[node_count];
+        s32 ref_array_count;
+        RuntimeObjectRefArray ref_arrays[ref_array_count];
     }
 };
 
