@@ -132,5 +132,7 @@ struct GcnkChunk {
     Vertex vertices[vertex_count];
 };
 
-s32 gcnk_version = 0;
-// GcnkChunk chunk @ 0x00;
+s32 gcnk_version in;
+#ifndef ROOT_PATTERN
+GcnkChunk chunk @ 0x00;
+#endif

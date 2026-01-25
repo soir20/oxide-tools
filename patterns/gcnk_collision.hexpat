@@ -14,4 +14,6 @@ struct GcnkCollision {
     GcnkCollisionEntry entries[while(std::mem::read_unsigned($, 4) != 0x00)];
 };
 
-// GcnkCollision collision @ 0x00;
+#ifndef ROOT_PATTERN
+GcnkCollision collision @ 0x00;
+#endif

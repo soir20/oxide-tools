@@ -1,4 +1,5 @@
 #pragma once
+#define ROOT_PATTERN
 
 import hex.dec;
 import type.magic;
