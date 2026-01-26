@@ -3,9 +3,10 @@
 import type.color;
 #include "vec.hexpat"
 
-struct RuntimeObjectRefArray {
-    s32 len;
-    u32 data[len];
+struct SubMeshBakedLighting {
+    s32 vertex_count;
+    // Use u32 instead of type::RGBA8 to avoid ImHex pattern limits/performance issues
+    u32 vertex_baked_lighting[vertex_count];
 };
 
 struct RuntimeObject {
@@ -30,8 +31,8 @@ struct RuntimeObject {
     }
     s32 unknown5;
     if (gcnk_version >= 3) {
-        s32 ref_array_count;
-        RuntimeObjectRefArray ref_arrays[ref_array_count];
+        s32 sub_mesh_count;
+        SubMeshBakedLighting baked_lighting[sub_mesh_count];
     }
 };
 
