@@ -32,6 +32,7 @@ struct RuntimeObject {
     s32 unknown5;
     if (gcnk_version >= 3) {
         s32 sub_mesh_count;
+        // Might be unused; can't tell a difference in-game when this is removed
         SubMeshBakedLighting baked_lighting[sub_mesh_count];
     }
 };
