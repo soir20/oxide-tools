@@ -10,7 +10,7 @@ struct SubMeshBakedLighting {
 };
 
 struct RuntimeObject {
-    s32 unknown1;
+    s32 hash;
     char adr_name[];
     char unknown2[];
     Vec4 pos;
