@@ -10,7 +10,9 @@ struct SubMeshBakedLighting {
 };
 
 struct RuntimeObject {
-    s32 hash;
+    // Runtime objects are duplicated for every tile the object appears in.
+    // The duplicate entries all share the same GUID
+    s32 guid;
     char adr_name[];
     char unknown2[];
     Vec4 pos;
