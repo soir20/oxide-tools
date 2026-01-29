@@ -22,7 +22,7 @@ struct RuntimeObject {
         char texture_alias[];
         char tint_alias[];
         if (tint_alias[0] != '\0') {
-            Vec4 unknown3;
+            Vec4 tint_rgba;
         }
     }
     padding[4];
