@@ -29,7 +29,7 @@ struct RuntimeObject {
     if (gcnk_version >= 5) {
         u32 terrain_object_id;
     } else {
-        char unknown4[];
+        char terrain_object_name[];
     }
     s32 unknown5;
     if (gcnk_version >= 3) {
