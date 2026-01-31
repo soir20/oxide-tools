@@ -53,17 +53,18 @@ struct RawArea {
     char name[];
     s32 unknown1;
     char unknown2[];
-    Vec4 unknown3;
-    Vec4 unknown4;
-    float unknown5;
-    Vec3 unknown6;
+    Vec4 pos;
+    Vec4 rot;
+    float scale;
+    // Might be radii or box dimensions
+    Vec3 dimensions;
 };
 
 struct RawGroup {
-    char unknown1[];
-    Vec4 unknown2;
-    Vec4 unknown3;
-    s32 unknown4;
+    char name[];
+    Vec4 pos;
+    Vec4 rot;
+    float scale;
 };
 
 struct Tile {
