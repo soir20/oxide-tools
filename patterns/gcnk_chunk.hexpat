@@ -57,7 +57,6 @@ struct RawArea {
     Vec4 pos;
     Vec4 rot;
     float scale;
-    // Might be radii or box dimensions
     Vec3 dimensions;
 };
 
