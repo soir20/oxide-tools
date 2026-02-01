@@ -31,7 +31,8 @@ struct RuntimeObject {
     } else {
         char terrain_object_name[];
     }
-    float unknown5;
+    // Might be unused; only applied to large models but can't tell a difference in-game
+    float min_render_radius;
     if (gcnk_version >= 3) {
         s32 sub_mesh_count;
         // Might be unused; can't tell a difference in-game when this is removed
