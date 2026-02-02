@@ -53,7 +53,7 @@ struct RawLight {
 
 struct RawArea {
     char name[];
-    // Setting to 1 prevents tiles from loading
+    // Always 0
     s32 unknown1;
     // Always the same as the name
     char unknown2[];
