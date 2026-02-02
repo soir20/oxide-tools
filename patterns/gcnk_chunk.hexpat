@@ -14,6 +14,7 @@ struct RuntimeObject {
     // The duplicate entries all share the same GUID
     s32 guid;
     char adr_name[];
+    // Never set in CWA and FR
     char unknown2[];
     Vec4 pos;
     Vec4 rot;
@@ -52,7 +53,9 @@ struct RawLight {
 
 struct RawArea {
     char name[];
+    // Setting to 1 prevents tiles from loading
     s32 unknown1;
+    // Always the same as the name
     char unknown2[];
     Vec4 pos;
     Vec4 rot;
@@ -71,6 +74,7 @@ struct Tile {
     s32 x;
     s32 y;
     Vec4 pos;
+    // Never set to > 0 in CWA and FR
     s32 unknown1;
     if (unknown1 > 0) {
         s32 unknown2;
@@ -78,6 +82,7 @@ struct Tile {
         s32 unknown4;
         s32 unknown5;
     }
+    // Always -1000 (same as pos.z)
     float unknown6;
     s32 eco_data_count;
     s32 eco_data[eco_data_count];
