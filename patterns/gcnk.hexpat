@@ -1,4 +1,5 @@
 #pragma once
+#pragma endian little
 #define ROOT_PATTERN
 
 import hex.dec;

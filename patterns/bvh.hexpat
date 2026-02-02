@@ -1,4 +1,5 @@
 #pragma once
+#pragma endian little
 
 #include "vec.hexpat"
 

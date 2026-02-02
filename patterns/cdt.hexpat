@@ -1,4 +1,5 @@
 #pragma once
+#pragma endian little
 
 import type.magic;
 #include "bvh.hexpat"

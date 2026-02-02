@@ -1,4 +1,5 @@
 #pragma once
+#pragma endian little
 
 import type.color;
 #include "vec.hexpat"

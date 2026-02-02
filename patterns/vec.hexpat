@@ -1,4 +1,5 @@
 #pragma once
+#pragma endian little
 
 struct Vec3 {
     float x;
