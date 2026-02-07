@@ -153,26 +153,33 @@ function soe_data_packet(buffer, subtree, opcode, _recursive)
 
     -- Sets up correct string for tab/tree name
     local data_type_string = (opcode:starts_with("SOE_C") and "Game")
-	or (opcode:starts_with("SOE_M") and "Multi-Packet")
-	or "Fragmented"
+    or (opcode:starts_with("SOE_M") and "Multi-Packet")
+    or "Fragmented"
     local tab_name = "Inflated "..data_type_string.." Data"
 
     local uses_compression = (not _recursive) and buffer(2,1):uint() ~= 0
     if not _recursive then
-	subtree:add(use_compression, buffer(2,1))
+    subtree:add(use_compression, buffer(2,1))
     end
 
     -- Merges field destination of compression branches
     local final_data -- uses_compression ? inflated_bytes : (buffer + 3)
     local final_tree -- uses_compression ? inflated_data_subtree : subtree
     if uses_compression then
-	subtree:add(deflated_data, buffer(3, buffer:len() - 5))
-	final_data = ByteArray.new(inflate(buffer), true):tvb(tab_name)
-	final_tree = subtree:add(final_data(), tab_name)
+    subtree:add(deflated_data, buffer(3, buffer:len() - 5))
+    final_data = ByteArray.new(inflate(buffer), true):tvb(tab_name)
+    final_tree = subtree:add(final_data(), tab_name)
     else
-	final_tree = subtree
-	local offset = 3 - ((_recursive and 1) or 0) -- Data packets inside SOE_MULTI don't have a zflag
-	final_data = buffer(offset, buffer:len() - offset - 2):tvb() -- Cut out opcode/zflag, crcfooter
+    final_tree = subtree
+    local offset = 3 - ((_recursive and 1) or 0) -- Data packets inside SOE_MULTI don't have a zflag
+
+    -- SOE_MULTI packets do not have a CRC footer, so don't strip 2 bytes here
+    local payload_len = buffer:len() - offset - 2
+    if _recursive then
+        payload_len = buffer:len() - offset
+    end
+
+    final_data = buffer(offset, payload_len):tvb() -- Cut out opcode/zflag, crcfooter
     end
 
     -- Data packets contain Tunneled packets
