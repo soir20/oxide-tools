@@ -412,7 +412,7 @@ function decode_game_stream(tvb, parent_tree)
                 break
             end
 
-            -- Decode known subopcode packet
+            -- Decode known sub packet
             local consumed = decode_game_packet(tvb, pos, parent_tree, subdef, op, sub)
             if consumed <= 0 then break end
             pos = pos + consumed
