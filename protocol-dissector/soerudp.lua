@@ -1,4 +1,10 @@
-soe_protocol= Proto("SOE",  "Sony Online Entertainment's Reliable UDP Protocol")
+package.path = package.path .. ";./plugins/freerealms/?.lua"
+
+local game = require("decode")
+
+local decode_game_stream     = game.decode_game_stream
+
+soe_protocol = Proto("SOE", "Sony Online Entertainment's Reliable UDP Protocol")
 
 soe_opcodes = {
     [0x0001]="SOE_SESSION_REQUEST",
@@ -169,20 +175,45 @@ function soe_data_packet(buffer, subtree, opcode, _recursive)
 	final_data = buffer(offset, buffer:len() - offset - 2):tvb() -- Cut out opcode/zflag, crcfooter
     end
 
-    -- SOE_MULTI_SOE packets don't have a sequence_number
-    if data_type_string ~= "Multi-Packet" then
-	final_tree:add(sequence_number, final_data(0,2))
-	if data_type_string:starts_with("F") then
-	    final_tree:add(fragment_total_size, final_data(2,4)):append_text(" (Only in first fragment packet in series)")
-	end
+    -- Data packets contain Tunneled packets
+    if not opcode:starts_with("SOE_CHL_DATA_A") then
+        return final_tree, final_data
     end
 
-    -- In non-multi packets, the first two bytes are sequence_number
-    -- In multi packets, the first two bytes aren't specially parsed in this fun
-    final_tree:add(game_data, final_data(_recursive and 0 or 2))
+    local pos = 0
+    local len = final_data:len()
 
-    if not _recursive then
-	subtree:add(crc_footer, buffer(buffer:len() - 2)):append_text(" (Byte longer if client-sent)")
+    --   uint16  tunneled_op  (0x05 or 0x06)
+    --   bool    is_reliable      (1 byte)
+    --   uint32  inner_size
+    --   bytes   inner[inner_size]
+    while pos + 7 <= len do
+        local tunneled_op = final_data(pos,2):le_uint()
+
+        if tunneled_op == 0x05 or tunneled_op == 0x06 then
+            local is_reliable = final_data(pos+2,1):uint() ~= 0
+
+            local inner_size = final_data(pos+3,4):le_uint()
+
+            local inner_start = pos + 7
+            local inner_end   = inner_start + inner_size
+
+            if inner_end > len then break end
+
+            -- Extract tunneled game packet
+            local inner_tvb = final_data(inner_start, inner_size):tvb("Tunneled Game Packet")
+
+            -- Hide gameData from the protocol tree, but allow filtering soe.game_data
+            final_tree:add(game_data, final_data(inner_start, inner_size)):set_hidden(true)
+
+            -- Decode Free Realms game packet(s)
+            decode_game_stream(inner_tvb, final_tree)
+
+            pos = inner_end
+        else
+            -- Not a tunneled opcode, advance by 1
+            pos = pos + 1
+        end
     end
 
     return final_tree, final_data
