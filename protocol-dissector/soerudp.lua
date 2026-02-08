@@ -153,36 +153,46 @@ function soe_data_packet(buffer, subtree, opcode, _recursive)
 
     -- Sets up correct string for tab/tree name
     local data_type_string = (opcode:starts_with("SOE_C") and "Game")
-    or (opcode:starts_with("SOE_M") and "Multi-Packet")
-    or "Fragmented"
+        or (opcode:starts_with("SOE_M") and "Multi-Packet")
+        or "Fragmented"
     local tab_name = "Inflated "..data_type_string.." Data"
 
     local uses_compression = (not _recursive) and buffer(2,1):uint() ~= 0
     if not _recursive then
-    subtree:add(use_compression, buffer(2,1))
+        subtree:add(use_compression, buffer(2,1))
     end
 
     -- Merges field destination of compression branches
     local final_data -- uses_compression ? inflated_bytes : (buffer + 3)
     local final_tree -- uses_compression ? inflated_data_subtree : subtree
     if uses_compression then
-    subtree:add(deflated_data, buffer(3, buffer:len() - 5))
-    final_data = ByteArray.new(inflate(buffer), true):tvb(tab_name)
-    final_tree = subtree:add(final_data(), tab_name)
+        subtree:add(deflated_data, buffer(3, buffer:len() - 5))
+
+        local inflated = ByteArray.new(inflate(buffer), true):tvb(tab_name)
+        final_tree = subtree:add(inflated(), tab_name)
+
+        final_data = inflated(0, inflated:len()):tvb()
     else
-    final_tree = subtree
-    local offset = 3 - ((_recursive and 1) or 0) -- Data packets inside SOE_MULTI don't have a zflag
+        final_tree = subtree
+        local offset = 3 - ((_recursive and 1) or 0) -- Data packets inside SOE_MULTI don't have a zflag
 
-    -- SOE_MULTI packets do not have a CRC footer, so don't strip 2 bytes here
-    local payload_len = buffer:len() - offset - 2
-    if _recursive then
-        payload_len = buffer:len() - offset
+        -- Cut opcode/zflag always
+        local payload_len = buffer:len() - offset
+
+        -- Recursive packets don't have a crcfooter, so slice 2 bytes
+        if not _recursive then
+            payload_len = payload_len - 2
+        end
+
+        final_data = buffer(offset, payload_len):tvb()
     end
 
-    final_data = buffer(offset, payload_len):tvb() -- Cut out opcode/zflag, crcfooter
+    -- SOE_MULTI_SOE packets don't have a sequence_number
+    if not _recursive and not opcode:starts_with("SOE_M") then
+        -- First two bytes are sequence_number
+        final_tree:add(sequence_number, final_data(0,2))
     end
 
-    -- Data packets contain Tunneled packets
     if not opcode:starts_with("SOE_CHL_DATA_A") then
         return final_tree, final_data
     end
@@ -190,17 +200,16 @@ function soe_data_packet(buffer, subtree, opcode, _recursive)
     local pos = 0
     local len = final_data:len()
 
-    --   uint16  tunneled_op  (0x05 or 0x06)
-    --   bool    is_reliable      (1 byte)
-    --   uint32  inner_size
-    --   bytes   inner[inner_size]
     while pos + 7 <= len do
+        --   uint16  tunneled_op  (0x05 or 0x06)
+        --   bool    is_reliable      (1 byte)
+        --   uint32  inner_size
+        --   bytes   inner[inner_size]
         local tunneled_op = final_data(pos,2):le_uint()
 
         if tunneled_op == 0x05 or tunneled_op == 0x06 then
             local is_reliable = final_data(pos+2,1):uint() ~= 0
-
-            local inner_size = final_data(pos+3,4):le_uint()
+            local inner_size  = final_data(pos+3,4):le_uint()
 
             local inner_start = pos + 7
             local inner_end   = inner_start + inner_size
@@ -213,8 +222,58 @@ function soe_data_packet(buffer, subtree, opcode, _recursive)
             -- Hide gameData from the protocol tree, but allow filtering soe.game_data
             final_tree:add(game_data, final_data(inner_start, inner_size)):set_hidden(true)
 
-            -- Decode Free Realms game packet(s)
-            decode_game_stream(inner_tvb, final_tree)
+            local inner_bytes = inner_tvb:raw()
+
+            -- Check for the magic bytes 0x00, 0x19 that indicate bundled data packets
+            if inner_size >= 2 and inner_bytes:byte(1) == 0x00 and inner_bytes:byte(2) == 0x19 then
+                local offset = 3  -- Lua is 1‑indexed; skip 00 19
+
+                while offset <= inner_size do
+                    local b1 = inner_bytes:byte(offset)
+                    local packet_len
+                    local consumed
+
+                    if b1 < 0xFF then
+                        packet_len = b1
+                        consumed = 1
+                    else
+                        local b2 = inner_bytes:byte(offset+1)
+                        local b3 = inner_bytes:byte(offset+2)
+
+                        if b2 == 0xFF and b3 == 0xFF then
+                            packet_len = (
+                                inner_bytes:byte(offset+3) << 24 |
+                                inner_bytes:byte(offset+4) << 16 |
+                                inner_bytes:byte(offset+5) << 8  |
+                                inner_bytes:byte(offset+6)
+                            )
+                            consumed = 3 + 4
+                        else
+                            packet_len = (
+                                b2 << 8 |
+                                b3
+                            )
+                            consumed = 1 + 2
+                        end
+                    end
+
+                    offset = offset + consumed
+
+                    if offset + packet_len - 1 > inner_size then
+                        break
+                    end
+
+                    -- Decode bundled Free Realms game data
+                    local sub_tvb = inner_tvb(offset-1, packet_len):tvb("Bundled Game Packet")
+                    decode_game_stream(sub_tvb, final_tree)
+
+                    offset = offset + packet_len
+                end
+
+            else
+                -- Decode non-bundled Free Realms game data
+                decode_game_stream(inner_tvb, final_tree)
+            end
 
             pos = inner_end
         else
