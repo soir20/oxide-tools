@@ -1,9 +1,15 @@
 local modules = {
+    Ability      = require("ability"),
     PlayerUpdate = require("playerupdate"),
     Combat       = require("combat"),
 }
 
 local OpCode = {
+    [0x24] = {
+        name       = "Ability",
+        subopcodes = modules.Ability.SubOpcodes,
+    },
+
     [0x23] = {
         name       = "PlayerUpdate",
         subopcodes = modules.PlayerUpdate.SubOpcodes,
