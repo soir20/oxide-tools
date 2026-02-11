@@ -28,7 +28,7 @@ return {
                 { name = "unknown22", type = "float" }, -- unknown22 and unknown25 always seem to match - possibly some kind of millis?
                 { name = "unknown23", type = "float" },
                 { name = "unknown24", type = "float" },
-                { name = "unknown25", type = "float" }, -- unknown22 and unknown25 always seem to match - possibly some kind of millis?
+                { name = "unknown25", type = "float" },
                 { name = "unknown26", type = "float" },
                 { name = "unknown27", type = "float" },
                 { name = "unknown28", type = "int32" }, -- Commonly has string id 2823 "Deals #number([*Param1TunedLow*]) damage."
@@ -69,8 +69,8 @@ return {
                 { name = "unknown5", type = "int32" },
                 { name = "unknown6", type = "bool" },
                 { name = "unknown7", type = "bool" },
-                { name = "target_animation_unknown1", type = "int32" },
-                { name = "unknown9", type = "int32" },
+                { name = "landed_animation_id", type = "int32" },
+                { name = "landed_composite_effect1", type = "int32" },
                 { name = "unknown10", type = "int32" },
                 { name = "unknown11", type = "Pos" },
                 { name = "launcher_composite_effect_duration", type = "float" },
@@ -98,7 +98,7 @@ return {
                 { name = "projectile_size", type = "float" },
                 { name = "progressive_inflation_size", type = "float" },
                 { name = "trail_composite_effect", type = "int32" },
-                { name = "landed_composite_effect", type = "int32" },
+                { name = "landed_composite_effect2", type = "int32" },
                 { name = "unknown36", type = "int32" },
                 { name = "unknown37", type = "int32" },
                 { name = "unknown38", type = "float" },
@@ -133,11 +133,11 @@ return {
                 { name = "unknown6", type = "int32" },
                 { name = "unknown7", type = "float" },
                 { name = "unknown8", type = "int32" },
-                { name = "unknown9", type = "int32" },
-                { name = "unknown10", type = "int32" },
+                { name = "destination_land_composite_effect", type = "int32" }, -- Uncomfirmed
+                { name = "target_land_composite_effect", type = "int32" }, -- Uncomfirmed
                 { name = "unknown11", type = "int32" },
-                { name = "unknown12", type = "int32" },
-                { name = "unknown13", type = "int32" },
+                { name = "cast_animation", type = "int32" },
+                { name = "land_animation", type = "int32" },
                 { name = "unknown14", type = "int32" },
                 { name = "unknown15", type = "int32" },
                 { name = "unknown16", type = "int32" },
@@ -151,7 +151,7 @@ return {
                 { name = "unknown24", type = "int32" },
                 { name = "unknown25", type = "int32" },
                 { name = "unknown26", type = "float" },
-                { name = "unknown27", type = "int32" },
+                { name = "trail_composite_effect", type = "int32" },
                 { name = "description2", type = "int32" },
                 { name = "unknown29", type = "float" },
                 { name = "unknown30", type = "float" },

@@ -460,7 +460,7 @@ end
 game_protocol.fields = {
     game_opcode,
     game_subopcode,
-    table.unpack(generated_fields)
+    table.unpack(all_registered_fields)
 }
 
 return {
