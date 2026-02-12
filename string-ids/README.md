@@ -1,6 +1,6 @@
 # oxide-string-ids
 
-Brute force script to recover string IDs from hashes .dat locale files.
+Brute force script to recover string IDs from hashes in .dat locale files.
 
 ## Prerequisites
 
