@@ -21,13 +21,13 @@ struct Args {
     output: String,
     /// Starting ID to brute-force
     #[arg(default_value_t = 0)]
-    range_start: i32,
+    range_start: u32,
     /// Ending ID to brute-force
-    #[arg(default_value_t = i32::MAX)]
-    range_end: i32,
+    #[arg(default_value_t = u32::MAX)]
+    range_end: u32,
 }
 
-fn build_digits(buf: &mut [u8; 16], mut value: i32) -> usize {
+fn build_digits(buf: &mut [u8; 16], mut value: u32) -> usize {
     if value == 0 {
         buf[0] = b'0';
         return 1;
@@ -74,13 +74,13 @@ fn brute_force(
     mut remaining: HashSet<u32>,
     mut hash_to_str: HashMap<u32, String>,
     out_path: &str,
-    range_start: i32,
-    range_end: i32,
+    range_start: u32,
+    range_end: u32,
 ) -> io::Result<()> {
     const PREFIX: &[u8] = b"Global.Text.";
     const PREFIX_LEN: usize = 12;
 
-    let mut results = Vec::<(i32, String)>::new();
+    let mut results = Vec::<(u32, String)>::new();
     let mut digits_buf = [0u8; 16];
     let mut key_buf = [0u8; 32];
 
