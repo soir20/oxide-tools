@@ -117,7 +117,7 @@ fn main() -> io::Result<()> {
     let start_time = Instant::now();
     let args = Args::parse();
 
-    println!("Starting…");
+    println!("Generating…");
 
     let hash_to_str = load_hashes(&args.input)?;
     let remaining: HashSet<u32> = hash_to_str.keys().copied().collect();
@@ -130,6 +130,6 @@ fn main() -> io::Result<()> {
         args.range_end,
     )?;
 
-    println!("Done. Elapsed: {:.2?}", start_time.elapsed());
+    println!("Complete!\nElapsed: {:.2?}", start_time.elapsed());
     Ok(())
 }
