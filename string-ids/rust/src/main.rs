@@ -40,12 +40,7 @@ static DIGITS_4: [[u8; 4]; 10000] = {
     table
 };
 
-fn build_digits(buf: &mut [u8; 16], mut value: u32) -> usize {
-    if value < 10 {
-        buf[0] = b'0' + value as u8;
-        return 1;
-    }
-
+fn build_digits<'a>(buf: &'a mut [u8; 16], mut value: u32) -> &'a [u8] {
     let mut write_index = 16;
 
     while value >= 10000 {
@@ -71,12 +66,11 @@ fn build_digits(buf: &mut [u8; 16], mut value: u32) -> usize {
         buf[write_index + 2] = digits[3];
     } else {
         write_index -= 4;
-        buf[write_index..write_index + 4].copy_from_slice(&DIGITS_4[value as usize]);
+        let digits = DIGITS_4[value as usize];
+        buf[write_index..write_index + 4].copy_from_slice(&digits);
     }
 
-    let digit_count = 16 - write_index;
-    buf.copy_within(write_index..16, 0);
-    digit_count
+    &buf[write_index..16]
 }
 
 fn load_hashes(path: &str) -> io::Result<HashMap<u32, String>> {
@@ -109,26 +103,24 @@ fn brute_force(
     const PREFIX: &[u8] = b"Global.Text.";
     const PREFIX_LEN: usize = 12;
 
-    let mut results = Vec::with_capacity(hash_to_str.len());
     let mut digits_buf = [0u8; 16];
     let mut key_buf = [0u8; 32];
 
     key_buf[..PREFIX_LEN].copy_from_slice(PREFIX);
 
-    for id in range_start..range_end {
-        let digit_count = build_digits(&mut digits_buf, id);
-        key_buf[PREFIX_LEN..PREFIX_LEN + digit_count].copy_from_slice(&digits_buf[..digit_count]);
+    let mut writer = BufWriter::new(File::create(out_path)?);
 
-        let hash = lookup2(&key_buf[..PREFIX_LEN + digit_count], 0);
+    for id in range_start..range_end {
+        let digits = build_digits(&mut digits_buf, id);
+        let total_len = PREFIX_LEN + digits.len();
+
+        key_buf[PREFIX_LEN..total_len].copy_from_slice(digits);
+
+        let hash = lookup2(&key_buf[..total_len], 0);
 
         if let Some(text) = hash_to_str.get(&hash) {
-            results.push((id, text.clone()));
+            writeln!(writer, "{id}\t{text}")?;
         }
-    }
-
-    let mut writer = BufWriter::new(File::create(out_path)?);
-    for (id, text) in results {
-        writeln!(writer, "{id}\t{text}")?;
     }
 
     Ok(())
