@@ -117,8 +117,7 @@ fn brute_force(
 
     for id in range_start..range_end {
         let digit_count = build_digits(&mut digits_buf, id);
-        key_buf[PREFIX_LEN..PREFIX_LEN + digit_count]
-            .copy_from_slice(&digits_buf[..digit_count]);
+        key_buf[PREFIX_LEN..PREFIX_LEN + digit_count].copy_from_slice(&digits_buf[..digit_count]);
 
         let hash = lookup2(&key_buf[..PREFIX_LEN + digit_count], 0);
 
@@ -143,12 +142,7 @@ fn main() -> io::Result<()> {
 
     let hash_to_str = load_hashes(&args.input)?;
 
-    brute_force(
-        hash_to_str,
-        &args.output,
-        args.range_start,
-        args.range_end,
-    )?;
+    brute_force(hash_to_str, &args.output, args.range_start, args.range_end)?;
 
     println!("Complete!\nElapsed: {:.2?}", start_time.elapsed());
     Ok(())
