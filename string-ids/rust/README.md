@@ -6,5 +6,7 @@ Requires [Rust](https://rust-lang.org/tools/install/) to build (`cargo build`) a
 
 # Usage
 Run the script with your input file, output file, and optional ID range:
+
 `cargo run --release -- <input.dat> <output.txt> --range-start 0 --range-end 5000000`
+
 By default, the range is `0` to `u32::MAX`.
