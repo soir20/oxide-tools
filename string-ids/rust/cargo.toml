@@ -1,0 +1,8 @@
+[package]
+name = "string-ids"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+jenkins-lookup2 = { path = "crates/jenkins-lookup2" }
+clap = { version = "4.5.51", features = ["derive"] }
