@@ -38,16 +38,14 @@ fn vertex_index(
     index_in_triangle: usize,
     max_distance: f32,
 ) -> u32 {
-    let chunk_vertex_index: usize = triangle_vertex_indices[index_in_triangle]
-        .try_into()
-        .expect("Couldn't convert u16 to usize");
+    let chunk_vertex_index: usize = triangle_vertex_indices[index_in_triangle].into();
     let nearest = tree.nearest_n_within::<SquaredEuclidean>(
         &chunk_vertices[chunk_vertex_index].pos,
         max_distance,
         NonZero::new(1).unwrap(),
         false,
     );
-    if nearest.len() == 0 {
+    if nearest.is_empty() {
         panic!("Vertex not found in kd tree but should have already been inserted");
     }
 
@@ -95,7 +93,7 @@ async fn main() {
                 NonZero::new(1).unwrap(),
                 false,
             );
-            if duplicate.len() == 0 {
+            if duplicate.is_empty() {
                 let vertex_index = vertices.len();
                 vertex_kd_tree.add(&vertex.pos, vertex_index);
                 vertices.push(vertex.pos);
