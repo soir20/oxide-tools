@@ -143,6 +143,19 @@ async fn build_terrain(
     }
 }
 
+fn list_adrs(chunks: &[(String, Gcnk)]) -> HashSet<String> {
+    chunks
+        .iter()
+        .flat_map(|(_, asset)| {
+            asset.chunk.tiles.iter().flat_map(|tile| {
+                tile.runtime_objects
+                    .iter()
+                    .map(|runtime_obj| runtime_obj.adr_name.clone())
+            })
+        })
+        .collect()
+}
+
 async fn map_to_cdt(adrs: &[(String, Adr)]) -> HashMap<String, Vec<String>> {
     adrs.iter()
         .map(|(asset_name, asset)| {
