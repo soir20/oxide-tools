@@ -126,14 +126,16 @@ async fn build_terrain(args: &Cli, asset_cache: &AssetCache, obj: &mut String) {
         }
     }
 
+    writeln!(obj, "g terrain").expect("Failed to write terrain group");
+
     for vertex in vertices {
         writeln!(obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
-            .expect("Failed to write vertex");
+            .expect("Failed to write terrain vertex");
     }
 
     for triangle in triangles {
         writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
-            .expect("Failed to write triangle");
+            .expect("Failed to write terrain triangle");
     }
 }
 
