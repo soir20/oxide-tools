@@ -1,9 +1,16 @@
 use asset_serialize::{
-    adr::{Adr, AdrData, CollisionData}, cdt::Cdt, gcnk::Gcnk
+    adr::{Adr, AdrData, CollisionData},
+    cdt::Cdt,
+    gcnk::Gcnk,
 };
 use clap::Parser;
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
-use std::{collections::{HashMap, HashSet}, fmt::Write, num::NonZero, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Write,
+    num::NonZero,
+    path::PathBuf,
+};
 use tokio::fs;
 
 use crate::asset_cache::AssetCache;
@@ -48,7 +55,7 @@ fn vertex_index(
 }
 
 fn add_vertices<'a>(
-    local_vertices: impl Iterator<Item=&'a [f32; 3]>,
+    local_vertices: impl Iterator<Item = &'a [f32; 3]>,
     global_vertices: &mut Vec<[f32; 3]>,
     vertex_kd_tree: &mut VertexKdTree,
     merge_radius: f32,
@@ -56,10 +63,9 @@ fn add_vertices<'a>(
     let mut local_to_global_indices = Vec::with_capacity(local_vertices.size_hint().0);
 
     for vertex in local_vertices {
-
         // Stitch vertices that are duplicated between chunks
         let duplicate = vertex_kd_tree.nearest_n_within::<SquaredEuclidean>(
-            &vertex,
+            vertex,
             merge_radius,
             NonZero::new(1).unwrap(),
             false,
@@ -68,7 +74,7 @@ fn add_vertices<'a>(
             [nearest, ..] => nearest.item,
             [] => {
                 let vertex_index = global_vertices.len();
-                vertex_kd_tree.add(&vertex, vertex_index);
+                vertex_kd_tree.add(vertex, vertex_index);
                 global_vertices.push(*vertex);
                 vertex_index
             }
@@ -94,7 +100,7 @@ async fn build_terrain(
             asset.chunk.vertices.iter().map(|vertex| &vertex.pos),
             &mut vertices,
             vertex_kd_tree,
-            merge_radius
+            merge_radius,
         );
 
         for batch in asset.chunk.render_batches.iter() {
@@ -149,8 +155,7 @@ async fn build_terrain(
 }
 
 async fn map_to_cdt(adrs: &[(String, Adr)]) -> HashMap<String, Vec<String>> {
-    adrs
-        .iter()
+    adrs.iter()
         .map(|(asset_name, asset)| {
             (
                 asset_name.clone(),
@@ -173,7 +178,11 @@ async fn map_to_cdt(adrs: &[(String, Adr)]) -> HashMap<String, Vec<String>> {
 }
 
 async fn unique_cdts(adr_to_cdts: &HashMap<String, Vec<String>>) -> HashSet<String> {
-    adr_to_cdts.values().flat_map(|cdts| cdts.iter()).cloned().collect()
+    adr_to_cdts
+        .values()
+        .flat_map(|cdts| cdts.iter())
+        .cloned()
+        .collect()
 }
 
 async fn build_objects(
@@ -187,7 +196,7 @@ async fn build_objects(
     let mut vertices: Vec<[f32; 3]> = Vec::new();
     let mut triangles: Vec<[u32; 3]> = Vec::new();
 
-    for (_, asset) in chunks.into_iter() {
+    for (_, asset) in chunks.iter() {
         let mut chunk_to_global_indices = Vec::with_capacity(asset.chunk.vertices.len());
 
         for tile in asset.chunk.tiles.iter() {
@@ -196,7 +205,7 @@ async fn build_objects(
                     continue;
                 };
 
-                let cdts = cdt_names.into_iter().filter_map(|cdt_name| {
+                let cdts = cdt_names.iter().filter_map(|cdt_name| {
                     let cdt = cdts.get(cdt_name);
                     if cdt.is_none() {
                         eprintln!("Failed to find CDT {}", cdt_name);
@@ -206,8 +215,12 @@ async fn build_objects(
 
                 for cdt in cdts {
                     for entry in cdt.entries.iter() {
-                        let local_to_global_indices = add_vertices(entry.vertices.iter(), &mut vertices, vertex_kd_tree, merge_radius);
-
+                        let local_to_global_indices = add_vertices(
+                            entry.vertices.iter(),
+                            &mut vertices,
+                            vertex_kd_tree,
+                            merge_radius,
+                        );
                     }
                 }
             }
@@ -310,13 +323,7 @@ async fn main() {
     let mut vertex_kd_tree: VertexKdTree = KdTree::new();
 
     let mut obj = String::new();
-    build_terrain(
-        &chunks,
-        args.merge_radius,
-        &mut vertex_kd_tree,
-        &mut obj,
-    )
-    .await;
+    build_terrain(&chunks, args.merge_radius, &mut vertex_kd_tree, &mut obj).await;
 
     match args.output {
         Some(out_path) => {
