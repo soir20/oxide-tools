@@ -45,14 +45,7 @@ fn vertex_index(
         .expect("Indices must be < 4_294_967_295")
 }
 
-#[tokio::main]
-async fn main() {
-    let args = Cli::parse();
-
-    let asset_cache = AssetCache::new(args.path, &["adr", "cdt", "gcnk"])
-        .await
-        .expect("Failed to build asset cache");
-
+async fn build_terrain(args: &Cli, asset_cache: &AssetCache, obj: &mut String) {
     let asset_names = asset_cache.filter(&args.zone, |asset_name| asset_name.ends_with(".gcnk"));
     let (assets, errors) = asset_cache.deserialize::<Gcnk>(asset_names).await;
     for (asset_name, error) in errors.into_iter() {
@@ -133,21 +126,27 @@ async fn main() {
         }
     }
 
-    let mut obj = String::new();
-
     for vertex in vertices {
-        writeln!(&mut obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
+        writeln!(obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
             .expect("Failed to write vertex");
     }
 
     for triangle in triangles {
-        writeln!(
-            &mut obj,
-            "f {} {} {}",
-            triangle[0], triangle[1], triangle[2]
-        )
-        .expect("Failed to write triangle");
+        writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
+            .expect("Failed to write triangle");
     }
+}
+
+#[tokio::main]
+async fn main() {
+    let args = Cli::parse();
+
+    let asset_cache = AssetCache::new(&args.path, &["adr", "cdt", "gcnk"])
+        .await
+        .expect("Failed to build asset cache");
+
+    let mut obj = String::new();
+    build_terrain(&args, &asset_cache, &mut obj).await;
 
     match args.output {
         Some(out_path) => {
