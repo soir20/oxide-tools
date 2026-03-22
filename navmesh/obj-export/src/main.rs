@@ -54,8 +54,8 @@ fn vertex_index(
         .expect("Indices must be < 4_294_967_295")
 }
 
-fn add_vertices<'a>(
-    local_vertices: impl Iterator<Item = &'a [f32; 3]>,
+fn add_vertices(
+    local_vertices: impl Iterator<Item = [f32; 3]>,
     global_vertices: &mut Vec<[f32; 3]>,
     vertex_kd_tree: &mut VertexKdTree,
     merge_radius: f32,
@@ -65,7 +65,7 @@ fn add_vertices<'a>(
     for vertex in local_vertices {
         // Stitch vertices that are duplicated between chunks
         let duplicate = vertex_kd_tree.nearest_n_within::<SquaredEuclidean>(
-            vertex,
+            &vertex,
             merge_radius,
             NonZero::new(1).unwrap(),
             false,
@@ -74,8 +74,8 @@ fn add_vertices<'a>(
             [nearest, ..] => nearest.item,
             [] => {
                 let vertex_index = global_vertices.len();
-                vertex_kd_tree.add(vertex, vertex_index);
-                global_vertices.push(*vertex);
+                vertex_kd_tree.add(&vertex, vertex_index);
+                global_vertices.push(vertex);
                 vertex_index
             }
         };
@@ -97,7 +97,7 @@ async fn build_terrain(
 
     for (_, asset) in chunks.iter() {
         let chunk_to_global_indices = add_vertices(
-            asset.chunk.vertices.iter().map(|vertex| &vertex.pos),
+            asset.chunk.vertices.iter().map(|vertex| vertex.pos),
             global_vertices,
             vertex_kd_tree,
             merge_radius,
@@ -221,7 +221,13 @@ async fn build_objects(
                 for cdt in cdts {
                     for entry in cdt.entries.iter() {
                         let local_to_global_indices = add_vertices(
-                            entry.vertices.iter(),
+                            entry.vertices.iter().map(|vertex| {
+                                [
+                                    vertex[0] + runtime_obj.pos[0],
+                                    vertex[1] + runtime_obj.pos[1],
+                                    vertex[2] + runtime_obj.pos[2],
+                                ]
+                            }),
                             global_vertices,
                             vertex_kd_tree,
                             merge_radius,
