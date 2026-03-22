@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-use asset_serialize::{list_assets, Asset, DeserializeAsset};
+use asset_serialize::{Asset, DeserializeAsset, list_assets};
 use tokio::{
     fs::OpenOptions,
     io::{AsyncSeekExt, BufReader},
@@ -37,7 +37,10 @@ pub struct AssetCache {
 }
 
 impl AssetCache {
-    pub async fn new<P: AsRef<Path>>(path: P, extensions: &[&str]) -> Result<Self, AssetCacheError> {
+    pub async fn new<P: AsRef<Path>>(
+        path: P,
+        extensions: &[&str],
+    ) -> Result<Self, AssetCacheError> {
         let extensions: HashSet<&str> = HashSet::from_iter(extensions.iter().copied());
         let assets = list_assets(path, false, |path| {
             path.extension()
