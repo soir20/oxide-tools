@@ -45,33 +45,22 @@ fn vertex_index(
         .expect("Indices must be < 4_294_967_295")
 }
 
-async fn build_terrain(args: &Cli, asset_cache: &AssetCache, obj: &mut String) {
-    let asset_names = asset_cache.filter(&args.zone, |asset_name| asset_name.ends_with(".gcnk"));
-    let (assets, errors) = asset_cache.deserialize::<Gcnk>(asset_names).await;
-    for (asset_name, error) in errors.into_iter() {
-        eprintln!(
-            "Failed to deserialize {asset_name} when building navmesh for {}: {error:?}",
-            args.zone
-        );
-    }
-
-    if assets.is_empty() {
-        eprintln!("No chunks match {}", args.zone);
-        return;
-    }
-
-    let mut vertices: Vec<[f32; 3]> = Vec::new();
-    let mut vertex_kd_tree: VertexKdTree = KdTree::new();
-    let mut triangles: Vec<[u32; 3]> = Vec::new();
-
+async fn build_terrain(
+    chunks: &[(String, Gcnk)],
+    merge_radius: f32,
+    vertices: &mut Vec<[f32; 3]>,
+    vertex_kd_tree: &mut VertexKdTree,
+    triangles: &mut Vec<[u32; 3]>,
+    obj: &mut String,
+) {
     // Stitch vertices that are duplicated between chunks
-    for (_, asset) in assets.into_iter() {
+    for (_, asset) in chunks.iter() {
         let mut chunk_to_global_indices = Vec::with_capacity(asset.chunk.vertices.len());
 
         for vertex in asset.chunk.vertices.iter() {
             let duplicate = vertex_kd_tree.nearest_n_within::<SquaredEuclidean>(
                 &vertex.pos,
-                args.merge_radius,
+                merge_radius,
                 NonZero::new(1).unwrap(),
                 false,
             );
@@ -88,7 +77,7 @@ async fn build_terrain(args: &Cli, asset_cache: &AssetCache, obj: &mut String) {
             chunk_to_global_indices.push(global_index);
         }
 
-        for batch in asset.chunk.render_batches.into_iter() {
+        for batch in asset.chunk.render_batches.iter() {
             let batch_index_start: usize = batch
                 .index_offset
                 .try_into()
@@ -147,8 +136,34 @@ async fn main() {
         .await
         .expect("Failed to build asset cache");
 
+    let asset_names = asset_cache.filter(&args.zone, |asset_name| asset_name.ends_with(".gcnk"));
+    let (chunks, errors) = asset_cache.deserialize::<Gcnk>(asset_names).await;
+    for (asset_name, error) in errors.into_iter() {
+        eprintln!(
+            "Failed to deserialize {asset_name} when building navmesh for {}: {error:?}",
+            args.zone
+        );
+    }
+
+    if chunks.is_empty() {
+        eprintln!("No chunks match {}", args.zone);
+        return;
+    }
+
+    let mut vertices: Vec<[f32; 3]> = Vec::new();
+    let mut vertex_kd_tree: VertexKdTree = KdTree::new();
+    let mut triangles: Vec<[u32; 3]> = Vec::new();
+
     let mut obj = String::new();
-    build_terrain(&args, &asset_cache, &mut obj).await;
+    build_terrain(
+        &chunks,
+        args.merge_radius,
+        &mut vertices,
+        &mut vertex_kd_tree,
+        &mut triangles,
+        &mut obj,
+    )
+    .await;
 
     match args.output {
         Some(out_path) => {
