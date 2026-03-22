@@ -39,7 +39,7 @@ fn vertex_index(
     let chunk_vertex_index: usize = triangle_vertex_indices[index_in_triangle].into();
     let index: u32 = chunk_to_global_indices[chunk_vertex_index]
         .try_into()
-        .expect("Couldn't convert usize to u32");
+        .expect("Couldn't convert index to u32");
     index
         .checked_add(1)
         .expect("Indices must be < 4_294_967_295")
@@ -95,13 +95,41 @@ async fn main() {
             chunk_to_global_indices.push(global_index);
         }
 
-        for triangle_indices in asset.chunk.indices.chunks(3) {
-            let triangle = [
-                vertex_index(&chunk_to_global_indices, triangle_indices, 0),
-                vertex_index(&chunk_to_global_indices, triangle_indices, 1),
-                vertex_index(&chunk_to_global_indices, triangle_indices, 2),
-            ];
-            triangles.push(triangle);
+        for batch in asset.chunk.render_batches.into_iter() {
+            let batch_index_start: usize = batch
+                .index_offset
+                .try_into()
+                .expect("Tried to convert batch index start to usize");
+            let batch_index_count = batch
+                .index_count
+                .try_into()
+                .expect("Tried to convert batch index count to usize");
+            let batch_index_end: usize = batch_index_start
+                .checked_add(batch_index_count)
+                .expect("Batch index end is out of bounds of usize");
+            let batch_indices = &asset.chunk.indices[batch_index_start..batch_index_end];
+
+            let batch_vertex_start: usize = batch
+                .vertex_offset
+                .try_into()
+                .expect("Tried to convert batch vertex start to usize");
+            let batch_vertex_count: usize = batch
+                .vertex_count
+                .try_into()
+                .expect("Tried to convert batch vertex end to usize");
+            let batch_vertex_end: usize = batch_vertex_start
+                .checked_add(batch_vertex_count)
+                .expect("Batch vertex end is out of bounds of usize");
+            let batch_vertices = &chunk_to_global_indices[batch_vertex_start..batch_vertex_end];
+
+            for triangle_indices in batch_indices.chunks(3) {
+                let triangle = [
+                    vertex_index(batch_vertices, triangle_indices, 0),
+                    vertex_index(batch_vertices, triangle_indices, 1),
+                    vertex_index(batch_vertices, triangle_indices, 2),
+                ];
+                triangles.push(triangle);
+            }
         }
     }
 
