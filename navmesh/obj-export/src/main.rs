@@ -97,9 +97,9 @@ async fn main() {
 
         for triangle_indices in asset.chunk.indices.chunks(3) {
             let triangle = [
-                vertex_index(&chunk_to_global_indices, &triangle_indices, 0),
-                vertex_index(&chunk_to_global_indices, &triangle_indices, 1),
-                vertex_index(&chunk_to_global_indices, &triangle_indices, 2),
+                vertex_index(&chunk_to_global_indices, triangle_indices, 0),
+                vertex_index(&chunk_to_global_indices, triangle_indices, 1),
+                vertex_index(&chunk_to_global_indices, triangle_indices, 2),
             ];
             triangles.push(triangle);
         }
