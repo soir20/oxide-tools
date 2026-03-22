@@ -1,10 +1,9 @@
 use asset_serialize::{
-    adr::{Adr, AdrData, CollisionData},
-    gcnk::Gcnk,
+    adr::{Adr, AdrData, CollisionData}, cdt::Cdt, gcnk::Gcnk
 };
 use clap::Parser;
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
-use std::{collections::HashMap, fmt::Write, num::NonZero, path::PathBuf};
+use std::{collections::{HashMap, HashSet}, fmt::Write, num::NonZero, path::PathBuf};
 use tokio::fs;
 
 use crate::asset_cache::AssetCache;
@@ -48,16 +47,171 @@ fn vertex_index(
         .expect("Indices must be < 4_294_967_295")
 }
 
+fn add_vertices<'a>(
+    local_vertices: impl Iterator<Item=&'a [f32; 3]>,
+    global_vertices: &mut Vec<[f32; 3]>,
+    vertex_kd_tree: &mut VertexKdTree,
+    merge_radius: f32,
+) -> Vec<usize> {
+    let mut local_to_global_indices = Vec::with_capacity(local_vertices.size_hint().0);
+
+    for vertex in local_vertices {
+
+        // Stitch vertices that are duplicated between chunks
+        let duplicate = vertex_kd_tree.nearest_n_within::<SquaredEuclidean>(
+            &vertex,
+            merge_radius,
+            NonZero::new(1).unwrap(),
+            false,
+        );
+        let global_index = match duplicate[..] {
+            [nearest, ..] => nearest.item,
+            [] => {
+                let vertex_index = global_vertices.len();
+                vertex_kd_tree.add(&vertex, vertex_index);
+                global_vertices.push(*vertex);
+                vertex_index
+            }
+        };
+
+        local_to_global_indices.push(global_index);
+    }
+
+    local_to_global_indices
+}
+
 async fn build_terrain(
     chunks: &[(String, Gcnk)],
     merge_radius: f32,
-    vertices: &mut Vec<[f32; 3]>,
     vertex_kd_tree: &mut VertexKdTree,
-    triangles: &mut Vec<[u32; 3]>,
     obj: &mut String,
 ) {
+    let mut vertices: Vec<[f32; 3]> = Vec::new();
+    let mut triangles: Vec<[u32; 3]> = Vec::new();
+
     for (_, asset) in chunks.iter() {
+        let chunk_to_global_indices = add_vertices(
+            asset.chunk.vertices.iter().map(|vertex| &vertex.pos),
+            &mut vertices,
+            vertex_kd_tree,
+            merge_radius
+        );
+
+        for batch in asset.chunk.render_batches.iter() {
+            let batch_index_start: usize = batch
+                .index_offset
+                .try_into()
+                .expect("Tried to convert batch index start to usize");
+            let batch_index_count = batch
+                .index_count
+                .try_into()
+                .expect("Tried to convert batch index count to usize");
+            let batch_index_end: usize = batch_index_start
+                .checked_add(batch_index_count)
+                .expect("Batch index end is out of bounds of usize");
+            let batch_indices = &asset.chunk.indices[batch_index_start..batch_index_end];
+
+            let batch_vertex_start: usize = batch
+                .vertex_offset
+                .try_into()
+                .expect("Tried to convert batch vertex start to usize");
+            let batch_vertex_count: usize = batch
+                .vertex_count
+                .try_into()
+                .expect("Tried to convert batch vertex end to usize");
+            let batch_vertex_end: usize = batch_vertex_start
+                .checked_add(batch_vertex_count)
+                .expect("Batch vertex end is out of bounds of usize");
+            let batch_vertices = &chunk_to_global_indices[batch_vertex_start..batch_vertex_end];
+
+            for triangle_indices in batch_indices.chunks(3) {
+                let triangle = [
+                    vertex_index(batch_vertices, triangle_indices, 0),
+                    vertex_index(batch_vertices, triangle_indices, 1),
+                    vertex_index(batch_vertices, triangle_indices, 2),
+                ];
+                triangles.push(triangle);
+            }
+        }
+    }
+
+    writeln!(obj, "g terrain").expect("Failed to write terrain group");
+
+    for vertex in vertices {
+        writeln!(obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
+            .expect("Failed to write terrain vertex");
+    }
+
+    for triangle in triangles {
+        writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
+            .expect("Failed to write terrain triangle");
+    }
+}
+
+async fn map_to_cdt(adrs: &[(String, Adr)]) -> HashMap<String, Vec<String>> {
+    adrs
+        .iter()
+        .map(|(asset_name, asset)| {
+            (
+                asset_name.clone(),
+                asset
+                    .entries
+                    .iter()
+                    .flat_map(|entry| match &entry.data {
+                        AdrData::Collision { entries } => entries
+                            .iter()
+                            .map(|entry| match &entry.data {
+                                CollisionData::AssetName { name } => name.clone(),
+                            })
+                            .collect(),
+                        _ => Vec::new(),
+                    })
+                    .collect(),
+            )
+        })
+        .collect()
+}
+
+async fn unique_cdts(adr_to_cdts: &HashMap<String, Vec<String>>) -> HashSet<String> {
+    adr_to_cdts.values().flat_map(|cdts| cdts.iter()).cloned().collect()
+}
+
+async fn build_objects(
+    chunks: &[(String, Gcnk)],
+    adr_to_cdts: HashMap<String, Vec<String>>,
+    cdts: HashMap<String, Cdt>,
+    merge_radius: f32,
+    vertex_kd_tree: &mut VertexKdTree,
+    obj: &mut String,
+) {
+    let mut vertices: Vec<[f32; 3]> = Vec::new();
+    let mut triangles: Vec<[u32; 3]> = Vec::new();
+
+    for (_, asset) in chunks.into_iter() {
         let mut chunk_to_global_indices = Vec::with_capacity(asset.chunk.vertices.len());
+
+        for tile in asset.chunk.tiles.iter() {
+            for runtime_obj in tile.runtime_objects.iter() {
+                let Some(cdt_names) = adr_to_cdts.get(&runtime_obj.adr_name) else {
+                    continue;
+                };
+
+                let cdts = cdt_names.into_iter().filter_map(|cdt_name| {
+                    let cdt = cdts.get(cdt_name);
+                    if cdt.is_none() {
+                        eprintln!("Failed to find CDT {}", cdt_name);
+                    }
+                    cdt
+                });
+
+                for cdt in cdts {
+                    for entry in cdt.entries.iter() {
+                        let local_to_global_indices = add_vertices(entry.vertices.iter(), &mut vertices, vertex_kd_tree, merge_radius);
+
+                    }
+                }
+            }
+        }
 
         for vertex in asset.chunk.vertices.iter() {
             // Stitch vertices that are duplicated between chunks
@@ -131,39 +285,6 @@ async fn build_terrain(
     }
 }
 
-async fn build_objects(
-    asset_cache: &AssetCache,
-    assets: &[(String, Adr)],
-    merge_radius: f32,
-    vertices: &mut Vec<[f32; 3]>,
-    vertex_kd_tree: &mut VertexKdTree,
-    triangles: &mut Vec<[u32; 3]>,
-    obj: &mut String,
-) {
-    let adrs_to_cdts: HashMap<String, Vec<String>> = assets
-        .iter()
-        .map(|(asset_name, asset)| {
-            (
-                asset_name.clone(),
-                asset
-                    .entries
-                    .iter()
-                    .flat_map(|entry| match &entry.data {
-                        AdrData::Collision { entries } => entries
-                            .iter()
-                            .map(|entry| match &entry.data {
-                                CollisionData::AssetName { name } => name.clone(),
-                            })
-                            .collect(),
-                        _ => Vec::new(),
-                    })
-                    .collect(),
-            )
-        })
-        .collect();
-    //let mut cdts = HashSet::new();
-}
-
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
@@ -186,17 +307,13 @@ async fn main() {
         return;
     }
 
-    let mut vertices: Vec<[f32; 3]> = Vec::new();
     let mut vertex_kd_tree: VertexKdTree = KdTree::new();
-    let mut triangles: Vec<[u32; 3]> = Vec::new();
 
     let mut obj = String::new();
     build_terrain(
         &chunks,
         args.merge_radius,
-        &mut vertices,
         &mut vertex_kd_tree,
-        &mut triangles,
         &mut obj,
     )
     .await;
