@@ -76,7 +76,7 @@ checksum = "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc"
 [[package]]
 name = "asset_serialize"
 version = "0.1.0"
-source = "git+https://github.com/soir20/oxide?branch=master#1faa31811582727a850caaf5a66738ef7f638e3b"
+source = "git+https://github.com/soir20/oxide?rev=1ef04b2a118bc9846528af39b9bb3263ea7a8336#1ef04b2a118bc9846528af39b9bb3263ea7a8336"
 dependencies = [
  "async-compression",
  "num_enum",

@@ -89,16 +89,16 @@ fn add_vertices<'a>(
 async fn build_terrain(
     chunks: &[(String, Gcnk)],
     merge_radius: f32,
+    global_vertices: &mut Vec<[f32; 3]>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
-    let mut vertices: Vec<[f32; 3]> = Vec::new();
-    let mut triangles: Vec<[u32; 3]> = Vec::new();
+    writeln!(obj, "g terrain").expect("Failed to write terrain group");
 
     for (_, asset) in chunks.iter() {
         let chunk_to_global_indices = add_vertices(
             asset.chunk.vertices.iter().map(|vertex| &vertex.pos),
-            &mut vertices,
+            global_vertices,
             vertex_kd_tree,
             merge_radius,
         );
@@ -136,21 +136,10 @@ async fn build_terrain(
                     vertex_index(batch_vertices, triangle_indices, 1),
                     vertex_index(batch_vertices, triangle_indices, 2),
                 ];
-                triangles.push(triangle);
+                writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
+                    .expect("Failed to write terrain triangle");
             }
         }
-    }
-
-    writeln!(obj, "g terrain").expect("Failed to write terrain group");
-
-    for vertex in vertices {
-        writeln!(obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
-            .expect("Failed to write terrain vertex");
-    }
-
-    for triangle in triangles {
-        writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
-            .expect("Failed to write terrain triangle");
     }
 }
 
@@ -190,15 +179,11 @@ async fn build_objects(
     adr_to_cdts: HashMap<String, Vec<String>>,
     cdts: HashMap<String, Cdt>,
     merge_radius: f32,
+    global_vertices: &mut Vec<[f32; 3]>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
-    let mut vertices: Vec<[f32; 3]> = Vec::new();
-    let mut triangles: Vec<[u32; 3]> = Vec::new();
-
     for (_, asset) in chunks.iter() {
-        let mut chunk_to_global_indices = Vec::with_capacity(asset.chunk.vertices.len());
-
         for tile in asset.chunk.tiles.iter() {
             for runtime_obj in tile.runtime_objects.iter() {
                 let Some(cdt_names) = adr_to_cdts.get(&runtime_obj.adr_name) else {
@@ -213,88 +198,36 @@ async fn build_objects(
                     cdt
                 });
 
+                writeln!(
+                    obj,
+                    "g {} {}",
+                    runtime_obj.adr_name, runtime_obj.terrain_object_identifier
+                )
+                .expect("Failed to write terrain group");
+
                 for cdt in cdts {
                     for entry in cdt.entries.iter() {
                         let local_to_global_indices = add_vertices(
                             entry.vertices.iter(),
-                            &mut vertices,
+                            global_vertices,
                             vertex_kd_tree,
                             merge_radius,
                         );
+
+                        for triangle_indices in entry.triangles.iter() {
+                            let triangle = [
+                                vertex_index(&local_to_global_indices, triangle_indices, 0),
+                                vertex_index(&local_to_global_indices, triangle_indices, 1),
+                                vertex_index(&local_to_global_indices, triangle_indices, 2),
+                            ];
+
+                            writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
+                                .expect("Failed to write terrain triangle");
+                        }
                     }
                 }
             }
         }
-
-        for vertex in asset.chunk.vertices.iter() {
-            // Stitch vertices that are duplicated between chunks
-            let duplicate = vertex_kd_tree.nearest_n_within::<SquaredEuclidean>(
-                &vertex.pos,
-                merge_radius,
-                NonZero::new(1).unwrap(),
-                false,
-            );
-            let global_index = match duplicate[..] {
-                [nearest, ..] => nearest.item,
-                [] => {
-                    let vertex_index = vertices.len();
-                    vertex_kd_tree.add(&vertex.pos, vertex_index);
-                    vertices.push(vertex.pos);
-                    vertex_index
-                }
-            };
-
-            chunk_to_global_indices.push(global_index);
-        }
-
-        for batch in asset.chunk.render_batches.iter() {
-            let batch_index_start: usize = batch
-                .index_offset
-                .try_into()
-                .expect("Tried to convert batch index start to usize");
-            let batch_index_count = batch
-                .index_count
-                .try_into()
-                .expect("Tried to convert batch index count to usize");
-            let batch_index_end: usize = batch_index_start
-                .checked_add(batch_index_count)
-                .expect("Batch index end is out of bounds of usize");
-            let batch_indices = &asset.chunk.indices[batch_index_start..batch_index_end];
-
-            let batch_vertex_start: usize = batch
-                .vertex_offset
-                .try_into()
-                .expect("Tried to convert batch vertex start to usize");
-            let batch_vertex_count: usize = batch
-                .vertex_count
-                .try_into()
-                .expect("Tried to convert batch vertex end to usize");
-            let batch_vertex_end: usize = batch_vertex_start
-                .checked_add(batch_vertex_count)
-                .expect("Batch vertex end is out of bounds of usize");
-            let batch_vertices = &chunk_to_global_indices[batch_vertex_start..batch_vertex_end];
-
-            for triangle_indices in batch_indices.chunks(3) {
-                let triangle = [
-                    vertex_index(batch_vertices, triangle_indices, 0),
-                    vertex_index(batch_vertices, triangle_indices, 1),
-                    vertex_index(batch_vertices, triangle_indices, 2),
-                ];
-                triangles.push(triangle);
-            }
-        }
-    }
-
-    writeln!(obj, "g terrain").expect("Failed to write terrain group");
-
-    for vertex in vertices {
-        writeln!(obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
-            .expect("Failed to write terrain vertex");
-    }
-
-    for triangle in triangles {
-        writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
-            .expect("Failed to write terrain triangle");
     }
 }
 
@@ -320,10 +253,23 @@ async fn main() {
         return;
     }
 
+    let mut global_vertices: Vec<[f32; 3]> = Vec::new();
     let mut vertex_kd_tree: VertexKdTree = KdTree::new();
 
     let mut obj = String::new();
-    build_terrain(&chunks, args.merge_radius, &mut vertex_kd_tree, &mut obj).await;
+    build_terrain(
+        &chunks,
+        args.merge_radius,
+        &mut global_vertices,
+        &mut vertex_kd_tree,
+        &mut obj,
+    )
+    .await;
+
+    for vertex in global_vertices.into_iter() {
+        writeln!(obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
+            .expect("Failed to write terrain vertex");
+    }
 
     match args.output {
         Some(out_path) => {
