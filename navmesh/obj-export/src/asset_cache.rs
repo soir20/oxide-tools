@@ -64,7 +64,7 @@ impl AssetCache {
 
     pub async fn deserialize<T: DeserializeAsset + Send + 'static>(
         &self,
-        asset_names: Vec<&str>,
+        asset_names: impl Iterator<Item = &str>,
     ) -> (Vec<(String, T)>, Vec<(String, AssetCacheError)>) {
         let mut futures = JoinSet::new();
         let mut errors = Vec::new();

@@ -143,20 +143,20 @@ async fn build_terrain(
     }
 }
 
-fn list_adrs(chunks: &[(String, Gcnk)]) -> HashSet<String> {
+fn list_adrs(chunks: &[(String, Gcnk)]) -> HashSet<&str> {
     chunks
         .iter()
         .flat_map(|(_, asset)| {
             asset.chunk.tiles.iter().flat_map(|tile| {
                 tile.runtime_objects
                     .iter()
-                    .map(|runtime_obj| runtime_obj.adr_name.clone())
+                    .map(|runtime_obj| runtime_obj.adr_name.as_str())
             })
         })
         .collect()
 }
 
-async fn map_to_cdt(adrs: &[(String, Adr)]) -> HashMap<String, Vec<String>> {
+fn map_to_cdt(adrs: &[(String, Adr)]) -> HashMap<String, Vec<String>> {
     adrs.iter()
         .map(|(asset_name, asset)| {
             (
@@ -179,18 +179,18 @@ async fn map_to_cdt(adrs: &[(String, Adr)]) -> HashMap<String, Vec<String>> {
         .collect()
 }
 
-async fn unique_cdts(adr_to_cdts: &HashMap<String, Vec<String>>) -> HashSet<String> {
+fn unique_cdts(adr_to_cdts: &HashMap<String, Vec<String>>) -> HashSet<&str> {
     adr_to_cdts
         .values()
         .flat_map(|cdts| cdts.iter())
-        .cloned()
+        .map(|asset_name| asset_name.as_str())
         .collect()
 }
 
 async fn build_objects(
     chunks: &[(String, Gcnk)],
-    adr_to_cdts: HashMap<String, Vec<String>>,
-    cdts: HashMap<String, Cdt>,
+    adr_to_cdts: &HashMap<String, Vec<String>>,
+    cdts: &HashMap<String, Cdt>,
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
     vertex_kd_tree: &mut VertexKdTree,
@@ -258,11 +258,13 @@ async fn main() {
         .await
         .expect("Failed to build asset cache");
 
-    let asset_names = asset_cache.filter(&args.zone, |asset_name| asset_name.ends_with(".gcnk"));
-    let (chunks, errors) = asset_cache.deserialize::<Gcnk>(asset_names).await;
+    let gcnk_names = asset_cache
+        .filter(&args.zone, |asset_name| asset_name.ends_with(".gcnk"))
+        .into_iter();
+    let (chunks, errors) = asset_cache.deserialize::<Gcnk>(gcnk_names).await;
     for (asset_name, error) in errors.into_iter() {
         eprintln!(
-            "Failed to deserialize {asset_name} when building navmesh for {}: {error:?}",
+            "Failed to deserialize GCNK {asset_name} when building navmesh for {}: {error:?}",
             args.zone
         );
     }
@@ -278,6 +280,40 @@ async fn main() {
     let mut obj = String::new();
     build_terrain(
         &chunks,
+        args.merge_radius,
+        &mut global_vertices,
+        &mut vertex_kd_tree,
+        &mut obj,
+    )
+    .await;
+
+    let adr_names = list_adrs(&chunks);
+    let (adrs, errors) = asset_cache
+        .deserialize::<Adr>(adr_names.iter().copied())
+        .await;
+    for (asset_name, error) in errors.into_iter() {
+        eprintln!(
+            "Failed to deserialize ADR {asset_name} when building navmesh for {}: {error:?}",
+            args.zone
+        );
+    }
+
+    let adr_to_cdts = map_to_cdt(&adrs);
+    let cdt_names = unique_cdts(&adr_to_cdts);
+    let (cdts, errors) = asset_cache
+        .deserialize::<Cdt>(cdt_names.iter().copied())
+        .await;
+    for (asset_name, error) in errors.into_iter() {
+        eprintln!(
+            "Failed to deserialize CDT {asset_name} when building navmesh for {}: {error:?}",
+            args.zone
+        );
+    }
+
+    build_objects(
+        &chunks,
+        &adr_to_cdts,
+        &cdts.into_iter().collect(),
         args.merge_radius,
         &mut global_vertices,
         &mut vertex_kd_tree,
