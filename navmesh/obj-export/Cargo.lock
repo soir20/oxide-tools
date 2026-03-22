@@ -76,7 +76,7 @@ checksum = "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc"
 [[package]]
 name = "asset_serialize"
 version = "0.1.0"
-source = "git+https://github.com/soir20/oxide?rev=1ef04b2a118bc9846528af39b9bb3263ea7a8336#1ef04b2a118bc9846528af39b9bb3263ea7a8336"
+source = "git+https://github.com/soir20/oxide?rev=3b017ff90d98713827b60d23b2c2428f7ba75dcc#3b017ff90d98713827b60d23b2c2428f7ba75dcc"
 dependencies = [
  "async-compression",
  "num_enum",
@@ -397,6 +397,7 @@ dependencies = [
  "clap",
  "kiddo",
  "tokio",
+ "tokio-take-seek",
 ]
 
 [[package]]
@@ -617,6 +618,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tokio-take-seek"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35d4131c282d12b26b56fa54aa1d1730829daac3b5c21dc9fe095717884cb854"
+dependencies = [
+ "pin-project-lite",
+ "tokio",
 ]
 
 [[package]]

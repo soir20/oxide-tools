@@ -11,6 +11,7 @@ use tokio::{
     io::{AsyncSeekExt, BufReader},
     task::JoinSet,
 };
+use tokio_take_seek::AsyncTakeSeekExt;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -82,7 +83,14 @@ impl AssetCache {
             let task = async move || {
                 let mut file = OpenOptions::new().read(true).open(&asset.path).await?;
                 file.seek(SeekFrom::Start(asset.offset)).await?;
-                let mut reader = BufReader::new(file);
+                let mut reader = BufReader::new(
+                    file.take_with_seek(
+                        asset
+                            .size
+                            .map(|size| asset.offset.saturating_add(size.into()))
+                            .unwrap_or(u64::MAX),
+                    ),
+                );
                 let deserialized_asset = T::deserialize(asset.path, &mut reader).await?;
                 Ok(deserialized_asset)
             };
