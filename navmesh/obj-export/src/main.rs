@@ -216,7 +216,7 @@ async fn build_objects(
                     "g {} {}",
                     runtime_obj.adr_name, runtime_obj.terrain_object_identifier
                 )
-                .expect("Failed to write terrain group");
+                .expect("Failed to write object group");
 
                 for cdt in cdts {
                     for entry in cdt.entries.iter() {
@@ -241,7 +241,7 @@ async fn build_objects(
                             ];
 
                             writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
-                                .expect("Failed to write terrain triangle");
+                                .expect("Failed to write object triangle");
                         }
                     }
                 }
@@ -277,13 +277,13 @@ async fn main() {
     let mut global_vertices: Vec<[f32; 3]> = Vec::new();
     let mut vertex_kd_tree: VertexKdTree = KdTree::new();
 
-    let mut obj = String::new();
+    let mut index_obj = String::new();
     build_terrain(
         &chunks,
         args.merge_radius,
         &mut global_vertices,
         &mut vertex_kd_tree,
-        &mut obj,
+        &mut index_obj,
     )
     .await;
 
@@ -317,21 +317,23 @@ async fn main() {
         args.merge_radius,
         &mut global_vertices,
         &mut vertex_kd_tree,
-        &mut obj,
+        &mut index_obj,
     )
     .await;
 
+    let mut combined_obj = String::new();
     for vertex in global_vertices.into_iter() {
-        writeln!(obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
-            .expect("Failed to write terrain vertex");
+        writeln!(combined_obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
+            .expect("Failed to write vertex");
     }
+    write!(combined_obj, "{}", index_obj).expect("Failed to write all indices");
 
     match args.output {
         Some(out_path) => {
-            fs::write(out_path, obj)
+            fs::write(out_path, combined_obj)
                 .await
                 .expect("Unable to write to output file");
         }
-        None => print!("{}", obj),
+        None => print!("{}", combined_obj),
     }
 }
