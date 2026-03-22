@@ -1,4 +1,4 @@
-use asset_serialize::gcnk::{Gcnk, Vertex};
+use asset_serialize::gcnk::Gcnk;
 use clap::Parser;
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
 use std::{fmt::Write, num::NonZero, path::PathBuf};
@@ -32,25 +32,12 @@ struct Cli {
 type VertexKdTree = KdTree<f32, usize, 3, 512, u32>;
 
 fn vertex_index(
-    tree: &VertexKdTree,
-    chunk_vertices: &[Vertex],
+    chunk_to_global_indices: &[usize],
     triangle_vertex_indices: &[u16],
     index_in_triangle: usize,
-    max_distance: f32,
 ) -> u32 {
     let chunk_vertex_index: usize = triangle_vertex_indices[index_in_triangle].into();
-    let nearest = tree.nearest_n_within::<SquaredEuclidean>(
-        &chunk_vertices[chunk_vertex_index].pos,
-        max_distance,
-        NonZero::new(1).unwrap(),
-        false,
-    );
-    if nearest.is_empty() {
-        panic!("Vertex not found in kd tree but should have already been inserted");
-    }
-
-    let index: u32 = nearest[0]
-        .item
+    let index: u32 = chunk_to_global_indices[chunk_vertex_index]
         .try_into()
         .expect("Couldn't convert usize to u32");
     index
@@ -86,6 +73,8 @@ async fn main() {
 
     // Stitch vertices that are duplicated between chunks
     for (_, asset) in assets.into_iter() {
+        let mut chunk_to_global_indices = Vec::with_capacity(asset.chunk.vertices.len());
+
         for vertex in asset.chunk.vertices.iter() {
             let duplicate = vertex_kd_tree.nearest_n_within::<SquaredEuclidean>(
                 &vertex.pos,
@@ -93,36 +82,24 @@ async fn main() {
                 NonZero::new(1).unwrap(),
                 false,
             );
-            if duplicate.is_empty() {
-                let vertex_index = vertices.len();
-                vertex_kd_tree.add(&vertex.pos, vertex_index);
-                vertices.push(vertex.pos);
-            }
+            let global_index = match duplicate[..] {
+                [nearest, ..] => nearest.item,
+                [] => {
+                    let vertex_index = vertices.len();
+                    vertex_kd_tree.add(&vertex.pos, vertex_index);
+                    vertices.push(vertex.pos);
+                    vertex_index
+                }
+            };
+
+            chunk_to_global_indices.push(global_index);
         }
 
         for triangle_indices in asset.chunk.indices.chunks(3) {
             let triangle = [
-                vertex_index(
-                    &vertex_kd_tree,
-                    &asset.chunk.vertices,
-                    triangle_indices,
-                    0,
-                    args.merge_radius,
-                ),
-                vertex_index(
-                    &vertex_kd_tree,
-                    &asset.chunk.vertices,
-                    triangle_indices,
-                    1,
-                    args.merge_radius,
-                ),
-                vertex_index(
-                    &vertex_kd_tree,
-                    &asset.chunk.vertices,
-                    triangle_indices,
-                    2,
-                    args.merge_radius,
-                ),
+                vertex_index(&chunk_to_global_indices, &triangle_indices, 0),
+                vertex_index(&chunk_to_global_indices, &triangle_indices, 1),
+                vertex_index(&chunk_to_global_indices, &triangle_indices, 2),
             ];
             triangles.push(triangle);
         }
