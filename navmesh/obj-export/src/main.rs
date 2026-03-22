@@ -1,7 +1,10 @@
-use asset_serialize::gcnk::Gcnk;
+use asset_serialize::{
+    adr::{Adr, AdrData, CollisionData},
+    gcnk::Gcnk,
+};
 use clap::Parser;
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
-use std::{fmt::Write, num::NonZero, path::PathBuf};
+use std::{collections::HashMap, fmt::Write, num::NonZero, path::PathBuf};
 use tokio::fs;
 
 use crate::asset_cache::AssetCache;
@@ -53,11 +56,11 @@ async fn build_terrain(
     triangles: &mut Vec<[u32; 3]>,
     obj: &mut String,
 ) {
-    // Stitch vertices that are duplicated between chunks
     for (_, asset) in chunks.iter() {
         let mut chunk_to_global_indices = Vec::with_capacity(asset.chunk.vertices.len());
 
         for vertex in asset.chunk.vertices.iter() {
+            // Stitch vertices that are duplicated between chunks
             let duplicate = vertex_kd_tree.nearest_n_within::<SquaredEuclidean>(
                 &vertex.pos,
                 merge_radius,
@@ -126,6 +129,39 @@ async fn build_terrain(
         writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
             .expect("Failed to write terrain triangle");
     }
+}
+
+async fn build_objects(
+    asset_cache: &AssetCache,
+    assets: &[(String, Adr)],
+    merge_radius: f32,
+    vertices: &mut Vec<[f32; 3]>,
+    vertex_kd_tree: &mut VertexKdTree,
+    triangles: &mut Vec<[u32; 3]>,
+    obj: &mut String,
+) {
+    let adrs_to_cdts: HashMap<String, Vec<String>> = assets
+        .iter()
+        .map(|(asset_name, asset)| {
+            (
+                asset_name.clone(),
+                asset
+                    .entries
+                    .iter()
+                    .flat_map(|entry| match &entry.data {
+                        AdrData::Collision { entries } => entries
+                            .iter()
+                            .map(|entry| match &entry.data {
+                                CollisionData::AssetName { name } => name.clone(),
+                            })
+                            .collect(),
+                        _ => Vec::new(),
+                    })
+                    .collect(),
+            )
+        })
+        .collect();
+    //let mut cdts = HashSet::new();
 }
 
 #[tokio::main]
