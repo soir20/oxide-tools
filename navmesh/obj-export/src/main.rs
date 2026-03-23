@@ -1,7 +1,7 @@
 use asset_serialize::{
     adr::{Adr, AdrData, CollisionData},
     cdt::Cdt,
-    gcnk::Gcnk,
+    gcnk::{Gcnk, TerrainObjectIdentifier},
 };
 use clap::Parser;
 use glam::{EulerRot, Quat, Vec3A};
@@ -197,9 +197,15 @@ async fn build_objects(
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
+    let mut written_objects = HashSet::new();
+
     for (_, asset) in chunks.iter() {
         for tile in asset.chunk.tiles.iter() {
             for runtime_obj in tile.runtime_objects.iter() {
+                if !written_objects.insert(runtime_obj.terrain_object_identifier.clone()) {
+                    continue;
+                }
+
                 let Some(cdt_names) = adr_to_cdts.get(&runtime_obj.adr_name) else {
                     continue;
                 };
