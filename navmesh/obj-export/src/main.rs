@@ -223,9 +223,9 @@ async fn build_objects(
                         let local_to_global_indices = add_vertices(
                             entry.vertices.iter().map(|vertex| {
                                 [
-                                    vertex[0] + runtime_obj.pos[0],
-                                    vertex[1] + runtime_obj.pos[1],
-                                    vertex[2] + runtime_obj.pos[2],
+                                    vertex[0] * runtime_obj.scale + runtime_obj.pos[0],
+                                    vertex[1] * runtime_obj.scale + runtime_obj.pos[1],
+                                    vertex[2] * runtime_obj.scale + runtime_obj.pos[2],
                                 ]
                             }),
                             global_vertices,
