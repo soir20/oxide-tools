@@ -4,6 +4,7 @@ use asset_serialize::{
     gcnk::Gcnk,
 };
 use clap::Parser;
+use glam::{EulerRot, Quat, Vec3A};
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
 use std::{
     collections::{HashMap, HashSet},
@@ -222,10 +223,19 @@ async fn build_objects(
                     for entry in cdt.entries.iter() {
                         let local_to_global_indices = add_vertices(
                             entry.vertices.iter().map(|vertex| {
+                                let rotation = Quat::from_euler(
+                                    EulerRot::YXZ,
+                                    runtime_obj.rot[0],
+                                    runtime_obj.rot[1],
+                                    runtime_obj.rot[2],
+                                );
+                                let vertex = rotation
+                                    * (Vec3A::new(vertex[0], vertex[1], vertex[2])
+                                        * runtime_obj.scale);
                                 [
-                                    vertex[0] * runtime_obj.scale + runtime_obj.pos[0],
-                                    vertex[1] * runtime_obj.scale + runtime_obj.pos[1],
-                                    vertex[2] * runtime_obj.scale + runtime_obj.pos[2],
+                                    vertex[0] + runtime_obj.pos[0],
+                                    vertex[1] + runtime_obj.pos[1],
+                                    vertex[2] + runtime_obj.pos[2],
                                 ]
                             }),
                             global_vertices,
