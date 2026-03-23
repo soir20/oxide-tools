@@ -1,17 +1,16 @@
 use std::{
     collections::{BTreeMap, HashSet},
     ffi::OsStr,
-    io::SeekFrom,
+    io::{Cursor, SeekFrom},
     path::Path,
 };
 
 use asset_serialize::{Asset, DeserializeAsset, list_assets};
 use tokio::{
     fs::OpenOptions,
-    io::{AsyncSeekExt, BufReader},
+    io::{AsyncReadExt, AsyncSeekExt, BufReader},
     task::JoinSet,
 };
-use tokio_take_seek::AsyncTakeSeekExt;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -83,14 +82,22 @@ impl AssetCache {
             let task = async move || {
                 let mut file = OpenOptions::new().read(true).open(&asset.path).await?;
                 file.seek(SeekFrom::Start(asset.offset)).await?;
-                let mut reader = BufReader::new(
-                    file.take_with_seek(
-                        asset
-                            .size
-                            .map(|size| u64::from(size))
-                            .unwrap_or(u64::MAX),
-                    ),
-                );
+
+                let buffer = match asset.size {
+                    Some(size) => {
+                        let mut buffer = vec![0; size as usize];
+                        file.read_exact(&mut buffer).await?;
+                        buffer
+                    }
+                    None => {
+                        let mut buffer = Vec::new();
+                        file.read_to_end(&mut buffer).await?;
+                        buffer
+                    }
+                };
+
+                let cursor = Cursor::new(buffer);
+                let mut reader = BufReader::new(cursor);
                 let deserialized_asset = T::deserialize(asset.path, &mut reader).await?;
                 Ok(deserialized_asset)
             };

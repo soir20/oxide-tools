@@ -397,7 +397,6 @@ dependencies = [
  "clap",
  "kiddo",
  "tokio",
- "tokio-take-seek",
 ]
 
 [[package]]
@@ -618,15 +617,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "tokio-take-seek"
-version = "0.2.0"
-source = "git+https://github.com/soir20/tokio-take-seek#d561c7f9d906ff4833f053d5f117ff5253c455b6"
-dependencies = [
- "pin-project-lite",
- "tokio",
 ]
 
 [[package]]
