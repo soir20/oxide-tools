@@ -87,7 +87,7 @@ impl AssetCache {
                     file.take_with_seek(
                         asset
                             .size
-                            .map(|size| asset.offset.saturating_add(size.into()))
+                            .map(|size| u64::from(size))
                             .unwrap_or(u64::MAX),
                     ),
                 );
