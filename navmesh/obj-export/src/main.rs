@@ -1,7 +1,7 @@
 use asset_serialize::{
     adr::{Adr, AdrData, CollisionData},
     cdt::Cdt,
-    gcnk::{Gcnk, TerrainObjectIdentifier},
+    gcnk::Gcnk,
 };
 use clap::Parser;
 use glam::{EulerRot, Quat, Vec3A};
