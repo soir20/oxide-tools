@@ -53,7 +53,7 @@ if __name__ == "__main__":
     else:
         script_args = []
 
-    parser = argparse.ArgumentParser(description="Navmesh generator arguments")
+    parser = argparse.ArgumentParser(description="Generates a layered navmesh from selected polygons in NAVMESH# vertex groups")
     parser.add_argument("--name", type=str, required=True, help="Name of the navmesh")
     parser.add_argument("--outfile", type=str, required=True, help="Path of the output YAML file")
     parser.add_argument("--verbose", action="store_true", help="Whether to print verbose output")
