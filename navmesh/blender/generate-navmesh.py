@@ -34,12 +34,16 @@ def main(in_file, out_file, verbose):
                         continue
 
                     group_vertices = set([v.index for v in obj.data.vertices if vertex_group.index in [g.group for g in v.groups]])
+
+                    bpy.ops.mesh.select_all(action="DESELECT")
+                    obj.vertex_groups.active = obj.vertex_groups[vertex_group.name]
+                    bpy.ops.object.vertex_group_select()
+                    bpy.ops.mesh.region_to_loop()
     
                     outer_edge_vertices = set()
-                    for edge in [edge for edge in bmesh.from_edit_mesh(obj.data).edges if edge.is_boundary]:
-                        if edge.verts[0].index in group_vertices and edge.verts[1].index in group_vertices:
-                            outer_edge_vertices.add(coords(edge.verts[0]))
-                            outer_edge_vertices.add(coords(edge.verts[1]))
+                    for edge in [edge for edge in bmesh.from_edit_mesh(obj.data).edges if edge.select]:
+                        outer_edge_vertices.add(coords(edge.verts[0]))
+                        outer_edge_vertices.add(coords(edge.verts[1]))
 
                     layers.setdefault(layer_index, set())
                     layers[layer_index] |= outer_edge_vertices
