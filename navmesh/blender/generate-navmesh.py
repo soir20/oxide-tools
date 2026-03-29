@@ -1,7 +1,6 @@
 import argparse
 import bpy
 import json
-import re
 import sys
 
 GROUP_PREFIX = "NAVMESH"
@@ -19,7 +18,7 @@ def main(navmesh_name, in_file, out_file, verbose):
         if obj.type == "MESH":
             for vertex_group in obj.vertex_groups:
                 if vertex_group.name.startswith(GROUP_PREFIX):
-                    [_, layer_index] = re.split(vertex_group.name, GROUP_PREFIX, 1)
+                    [_, layer_index] = vertex_group.name.split(GROUP_PREFIX, 1)
                     try:
                         layer_index = int(layer_index)
                     except ValueError as err:
