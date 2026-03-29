@@ -78,12 +78,8 @@ def main(in_file, out_file, verbose):
                         graph.setdefault(coords(edge.verts[0]), set()).add(coords(edge.verts[1]))
                         graph.setdefault(coords(edge.verts[1]), set()).add(coords(edge.verts[0]))
 
-                    polygons = []
                     for vertex in graph.keys():
-                        polygons.extend(polygonize(graph, vertex, [vertex], {vertex}))
-
-                    # TODO: remove after testing
-                    layers[0] = polygons
+                        layers.setdefault(layer_index, []).extend(polygonize(graph, vertex, [vertex], {vertex}))
                 else:
                     print_debug(f"Skipping {vertex_group.name} because it does not start with {GROUP_PREFIX}", verbose)
         else:
