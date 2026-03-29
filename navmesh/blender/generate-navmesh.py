@@ -42,7 +42,7 @@ def main(navmesh_name, in_file, out_file, verbose):
             print_debug(f"Skipping {obj.name} because is not a mesh", verbose)
 
         output = {
-            navmesh_name: [layers[key] for key in sorted(layers.keys())]
+            navmesh_name: [list(layers[key]) for key in sorted(layers.keys())]
         }
         with open(out_file, "w") as file:
             json.dump(output, file)
