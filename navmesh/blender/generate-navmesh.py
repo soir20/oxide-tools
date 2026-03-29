@@ -1,6 +1,8 @@
+import argparse
 import bpy
+import json
 import re
-import yaml
+import sys
 
 GROUP_PREFIX = "NAVMESH"
 
@@ -43,9 +45,8 @@ def main(navmesh_name, in_file, out_file, verbose):
         output = {
             navmesh_name: [layers[key] for key in sorted(layers.keys())]
         }
-        yaml_output = yaml.dump(output, sort_keys=False)
         with open(out_file, "w") as file:
-            file.write(yaml_output)
+            json.dump(output, file)
 
 
 if __name__ == "__main__":
