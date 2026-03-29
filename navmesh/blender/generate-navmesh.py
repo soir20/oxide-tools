@@ -16,14 +16,14 @@ def coords(vertex):
     return (vertex.co.x, vertex.co.y, vertex.co.z)
 
 
-def polygon_area_shoelace(vertices):
+def polygon_area(vertices):
     n = len(vertices)
     area = 0.0
     for i in range(n):
         j = (i + 1) % n
-        x1, y1 = vertices[i]
-        x2, y2 = vertices[j]
-        area += x1 * y2 - x2 * y1
+        x1, _, z1 = vertices[i]
+        x2, _, z2 = vertices[j]
+        area += x1 * z2 - x2 * z1
     
     return abs(area) / 2.0
 
@@ -85,7 +85,20 @@ def main(in_file, out_file, verbose):
         else:
             print_debug(f"Skipping {obj.name} because is not a mesh", verbose)
 
-        output = [list(layers[key]) for key in sorted(layers.keys())]
+        output = []
+        for layer_index in sorted(layers.keys()):
+            polygons = layers[layer_index]
+            if len(polygons) == 0:
+                continue
+
+            polygons.sort(key=polygon_area)
+            exterior = polygons.pop()
+
+            output.append({
+                "exterior": exterior,
+                "obstacles": polygons
+            })
+
         with open(out_file, "w") as file:
             json.dump(output, file, indent=2)
 
