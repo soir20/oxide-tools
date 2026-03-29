@@ -11,6 +11,10 @@ def print_debug(text, verbose=True):
         print(text)
 
 
+def coords(vertex):
+    return (vertex.co.x, vertex.co.y, vertex.co.z)
+
+
 def main(navmesh_name, in_file, out_file, verbose):
     bpy.ops.wm.open_mainfile(filepath=in_file)
     layers = {}
@@ -33,9 +37,9 @@ def main(navmesh_name, in_file, out_file, verbose):
     
                     outer_edge_vertices = set()
                     for edge in [edge for edge in bmesh.from_edit_mesh(obj.data).edges if edge.is_boundary]:
-                        if edge.verts[0] in group_vertices and edge.verts[1] in group_vertices:
-                            outer_edge_vertices.add(edge.verts[0])
-                            outer_edge_vertices.add(edge.verts[1])
+                        if edge.verts[0].index in group_vertices and edge.verts[1].index in group_vertices:
+                            outer_edge_vertices.add(coords(edge.verts[0]))
+                            outer_edge_vertices.add(coords(edge.verts[1]))
 
                     layers.setdefault(layer_index, set())
                     layers[layer_index] |= outer_edge_vertices
@@ -48,7 +52,7 @@ def main(navmesh_name, in_file, out_file, verbose):
             navmesh_name: [list(layers[key]) for key in sorted(layers.keys())]
         }
         with open(out_file, "w") as file:
-            json.dump(output, file)
+            json.dump(output, file, indent=2)
 
 
 if __name__ == "__main__":
