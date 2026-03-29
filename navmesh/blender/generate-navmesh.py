@@ -9,7 +9,8 @@ def print_debug(text, verbose=True):
         print(text)
 
 
-def main(navmesh_name, out_file, verbose):
+def main(navmesh_name, in_file, out_file, verbose):
+    bpy.ops.wm.open_mainfile(filepath=in_file)
     layers = {}
 
     for obj in bpy.context.scene.objects:
@@ -55,8 +56,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generates a layered navmesh from selected polygons in NAVMESH# vertex groups")
     parser.add_argument("--name", type=str, required=True, help="Name of the navmesh")
-    parser.add_argument("--outfile", type=str, required=True, help="Path of the output YAML file")
+    parser.add_argument("--infile", type=str, required=True, help="Path of the input .blend file")
+    parser.add_argument("--outfile", type=str, required=True, help="Path of the output .yaml file")
     parser.add_argument("--verbose", action="store_true", help="Whether to print verbose output")
     
     args, _ = parser.parse_known_args(script_args)
-    main(args.name, args.outfile, args.verbose)
+    main(args.name, args.infile, args.outfile, args.verbose)
