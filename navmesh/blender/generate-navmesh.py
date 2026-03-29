@@ -28,10 +28,11 @@ def polygon_area_shoelace(vertices):
     return abs(area) / 2.0
 
 
-def polygonize(graph, neighbors, path, visited):
+def polygonize(graph, vertex, path, visited):
     polygons = []
-    while len(neighbors) > 0:
-        neighbor = neighbors.pop()
+    while len(graph[vertex]) > 0:
+        neighbor = graph[vertex].pop()
+        graph[neighbor].discard(vertex)
         if neighbor in visited:
             # We found a loop, so there is a polygon, but we might be intersecting with the
             # vertex we started at. Remove extraneous parts of the path so we start at the vertex
@@ -41,7 +42,7 @@ def polygonize(graph, neighbors, path, visited):
                 trimmed_path.popleft()
             polygons.append(path)
         else:
-            polygons.extend(polygonize(graph, graph[neighbor], path + [neighbor], visited | {neighbor}))
+            polygons.extend(polygonize(graph, neighbor, path + [neighbor], visited | {neighbor}))
     
     return polygons
 
@@ -74,12 +75,12 @@ def main(in_file, out_file, verbose):
                     graph = {}
 
                     for edge in [edge for edge in bmesh.from_edit_mesh(obj.data).edges if edge.select]:
-                        graph.setdefault((edge.verts[0].co.x, edge.verts[0].co.z), []).append((edge.verts[1].co.x, edge.verts[1].co.z))
-                        graph.setdefault((edge.verts[1].co.x, edge.verts[1].co.z), []).append((edge.verts[0].co.x, edge.verts[0].co.z))
+                        graph.setdefault((edge.verts[0].co.x, edge.verts[0].co.z), set()).add((edge.verts[1].co.x, edge.verts[1].co.z))
+                        graph.setdefault((edge.verts[1].co.x, edge.verts[1].co.z), set()).add((edge.verts[0].co.x, edge.verts[0].co.z))
 
                     polygons = []
-                    for (vertex, neighbors) in graph.items():
-                        polygons.extend(polygonize(graph, neighbors, [vertex], {vertex}))
+                    for vertex in graph.keys():
+                        polygons.extend(polygonize(graph, vertex, [vertex], {vertex}))
 
                     # TODO: remove after testing
                     layers[0] = polygons
