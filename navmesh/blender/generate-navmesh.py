@@ -1,4 +1,5 @@
 import argparse
+import bmesh
 import bpy
 import json
 import sys
@@ -14,6 +15,9 @@ def main(navmesh_name, in_file, out_file, verbose):
     bpy.ops.wm.open_mainfile(filepath=in_file)
     layers = {}
 
+    if bpy.context.mode != "EDIT":
+        bpy.ops.object.mode_set(mode="EDIT")
+
     for obj in bpy.context.scene.objects:
         if obj.type == "MESH":
             for vertex_group in obj.vertex_groups:
@@ -28,11 +32,10 @@ def main(navmesh_name, in_file, out_file, verbose):
                     group_vertices = set([v.index for v in obj.data.vertices if vertex_group.index in [g.group for g in v.groups]])
     
                     outer_edge_vertices = set()
-                    for edge in obj.data.edges:
-                        if edge.vertices[0] in group_vertices and edge.vertices[1] in group_vertices:
-                            if len(edge.link_faces) == 1:
-                                outer_edge_vertices.add(edge.vertices[0])
-                                outer_edge_vertices.add(edge.vertices[1])
+                    for edge in [edge for edge in bmesh.from_edit_mesh(obj.data).edges if edge.is_boundary]:
+                        if edge.verts[0] in group_vertices and edge.verts[1] in group_vertices:
+                            outer_edge_vertices.add(edge.verts[0])
+                            outer_edge_vertices.add(edge.verts[1])
 
                     layers.setdefault(layer_index, set())
                     layers[layer_index] |= outer_edge_vertices
