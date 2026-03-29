@@ -15,7 +15,7 @@ def coords(vertex):
     return (vertex.co.x, vertex.co.y, vertex.co.z)
 
 
-def main(navmesh_name, in_file, out_file, verbose):
+def main(in_file, out_file, verbose):
     bpy.ops.wm.open_mainfile(filepath=in_file)
     layers = {}
 
@@ -48,9 +48,7 @@ def main(navmesh_name, in_file, out_file, verbose):
         else:
             print_debug(f"Skipping {obj.name} because is not a mesh", verbose)
 
-        output = {
-            navmesh_name: [list(layers[key]) for key in sorted(layers.keys())]
-        }
+        output = [list(layers[key]) for key in sorted(layers.keys())]
         with open(out_file, "w") as file:
             json.dump(output, file, indent=2)
 
@@ -62,10 +60,9 @@ if __name__ == "__main__":
         script_args = []
 
     parser = argparse.ArgumentParser(description="Generates a layered navmesh from selected polygons in NAVMESH# vertex groups")
-    parser.add_argument("--name", type=str, required=True, help="Name of the navmesh")
     parser.add_argument("--infile", type=str, required=True, help="Path of the input .blend file")
     parser.add_argument("--outfile", type=str, required=True, help="Path of the output .yaml file")
     parser.add_argument("--verbose", action="store_true", help="Whether to print verbose output")
     
     args, _ = parser.parse_known_args(script_args)
-    main(args.name, args.infile, args.outfile, args.verbose)
+    main(args.infile, args.outfile, args.verbose)
