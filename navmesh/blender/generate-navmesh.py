@@ -1,6 +1,7 @@
 import argparse
 import bmesh
 import bpy
+from collections import deque
 import json
 import sys
 
@@ -13,6 +14,36 @@ def print_debug(text, verbose=True):
 
 def coords(vertex):
     return (vertex.co.x, vertex.co.y, vertex.co.z)
+
+
+def polygon_area_shoelace(vertices):
+    n = len(vertices)
+    area = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        x1, y1 = vertices[i]
+        x2, y2 = vertices[j]
+        area += x1 * y2 - x2 * y1
+    
+    return abs(area) / 2.0
+
+
+def polygonize(graph, neighbors, path, visited):
+    polygons = []
+    while len(neighbors) > 0:
+        neighbor = neighbors.pop()
+        if neighbor in visited:
+            # We found a loop, so there is a polygon, but we might be intersecting with the
+            # vertex we started at. Remove extraneous parts of the path so we start at the vertex
+            # we're intersecting with.
+            trimmed_path = deque(path)
+            while trimmed_path[0] != neighbor:
+                trimmed_path.popleft()
+            polygons.append(path)
+        else:
+            polygons.extend(polygonize(graph, graph[neighbor], path + [neighbor], visited | {neighbor}))
+    
+    return polygons
 
 
 def main(in_file, out_file, verbose):
@@ -39,14 +70,19 @@ def main(in_file, out_file, verbose):
                     obj.vertex_groups.active = obj.vertex_groups[vertex_group.name]
                     bpy.ops.object.vertex_group_select()
                     bpy.ops.mesh.region_to_loop()
-    
-                    outer_edge_vertices = set()
-                    for edge in [edge for edge in bmesh.from_edit_mesh(obj.data).edges if edge.select]:
-                        outer_edge_vertices.add(coords(edge.verts[0]))
-                        outer_edge_vertices.add(coords(edge.verts[1]))
 
-                    layers.setdefault(layer_index, set())
-                    layers[layer_index] |= outer_edge_vertices
+                    graph = {}
+
+                    for edge in [edge for edge in bmesh.from_edit_mesh(obj.data).edges if edge.select]:
+                        graph.setdefault((edge.verts[0].co.x, edge.verts[0].co.z), []).append((edge.verts[1].co.x, edge.verts[1].co.z))
+                        graph.setdefault((edge.verts[1].co.x, edge.verts[1].co.z), []).append((edge.verts[0].co.x, edge.verts[0].co.z))
+
+                    polygons = []
+                    for (vertex, neighbors) in graph.items():
+                        polygons.extend(polygonize(graph, neighbors, [vertex], {vertex}))
+
+                    # TODO: remove after testing
+                    layers[0] = polygons
                 else:
                     print_debug(f"Skipping {vertex_group.name} because it does not start with {GROUP_PREFIX}", verbose)
         else:
