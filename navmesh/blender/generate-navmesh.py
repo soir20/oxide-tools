@@ -75,8 +75,8 @@ def main(in_file, out_file, verbose):
                     graph = {}
 
                     for edge in [edge for edge in bmesh.from_edit_mesh(obj.data).edges if edge.select]:
-                        graph.setdefault((edge.verts[0].co.x, edge.verts[0].co.z), set()).add((edge.verts[1].co.x, edge.verts[1].co.z))
-                        graph.setdefault((edge.verts[1].co.x, edge.verts[1].co.z), set()).add((edge.verts[0].co.x, edge.verts[0].co.z))
+                        graph.setdefault(coords(edge.verts[0]), set()).add(coords(edge.verts[1]))
+                        graph.setdefault(coords(edge.verts[1]), set()).add(coords(edge.verts[0]))
 
                     polygons = []
                     for vertex in graph.keys():
