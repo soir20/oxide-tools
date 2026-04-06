@@ -1,5 +1,5 @@
 # obj-export
-**obj-export** is a simple command line tool written in Rust. It converts .gznk ForgeLight chunks and assets' colliders to .obj files.
+**obj-export** is a command-line tool to convert .gznk ForgeLight chunks and assets' colliders to .obj files.
 
 ## Options
 Run the tool with the `--help` flag to view a list of the tool's options.
