@@ -65,8 +65,6 @@ def main(in_file, out_file, verbose):
                         print(f"Could not determine layer index for group {vertex_group.name}")
                         continue
 
-                    group_vertices = set([v.index for v in obj.data.vertices if vertex_group.index in [g.group for g in v.groups]])
-
                     bpy.ops.mesh.select_all(action="DESELECT")
                     obj.vertex_groups.active = obj.vertex_groups[vertex_group.name]
                     bpy.ops.object.vertex_group_select()
@@ -111,7 +109,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generates a layered navmesh from selected polygons in NAVMESH# vertex groups")
     parser.add_argument("--infile", type=str, required=True, help="Path of the input .blend file")
-    parser.add_argument("--outfile", type=str, required=True, help="Path of the output .yaml file")
+    parser.add_argument("--outfile", type=str, required=True, help="Path of the output .json file")
     parser.add_argument("--verbose", action="store_true", help="Whether to print verbose output")
     
     args, _ = parser.parse_known_args(script_args)
