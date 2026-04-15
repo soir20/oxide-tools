@@ -9,14 +9,17 @@ use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
 use std::{
     collections::{HashMap, HashSet},
     fmt::Write,
+    fs::File,
+    io::BufWriter,
     num::NonZero,
     path::PathBuf,
 };
 use tokio::fs;
 
-use crate::asset_cache::AssetCache;
+use crate::{asset_cache::AssetCache, bvh::generate_bvh};
 
 mod asset_cache;
+mod bvh;
 
 /// Contains program arguments parsed from the command line
 #[derive(Parser)]
@@ -34,9 +37,13 @@ struct Cli {
     #[arg(short = 'r', long, value_name = "RADIUS")]
     merge_radius: f32,
 
-    /// Path to outout file. If unspecified, prints to stdout
+    /// Path to output file. If unspecified, prints to stdout
     #[arg(short, long, value_name = "FILE")]
     output: Option<PathBuf>,
+
+    /// Path to bounding volume hierarchy output file. If unspecified, does not construct BVH
+    #[arg(long, value_name = "BVH_FILE")]
+    bvh: Option<PathBuf>,
 }
 
 type VertexKdTree = KdTree<f32, usize, 3, 1024, u32>;
@@ -91,6 +98,7 @@ async fn build_terrain(
     chunks: &[(String, Gcnk)],
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
+    global_triangles: &mut Vec<[u32; 3]>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
@@ -139,6 +147,7 @@ async fn build_terrain(
                 ];
                 writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
                     .expect("Failed to write terrain triangle");
+                global_triangles.push(triangle);
             }
         }
     }
@@ -194,6 +203,7 @@ async fn build_objects(
     cdts: &HashMap<String, Cdt>,
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
+    global_triangles: &mut Vec<[u32; 3]>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
@@ -258,6 +268,7 @@ async fn build_objects(
 
                             writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
                                 .expect("Failed to write object triangle");
+                            global_triangles.push(triangle);
                         }
                     }
                 }
@@ -291,6 +302,7 @@ async fn main() {
     }
 
     let mut global_vertices: Vec<[f32; 3]> = Vec::new();
+    let mut global_triangles: Vec<[u32; 3]> = Vec::new();
     let mut vertex_kd_tree: VertexKdTree = KdTree::new();
 
     let mut index_obj = String::new();
@@ -298,6 +310,7 @@ async fn main() {
         &chunks,
         args.merge_radius,
         &mut global_vertices,
+        &mut global_triangles,
         &mut vertex_kd_tree,
         &mut index_obj,
     )
@@ -332,13 +345,14 @@ async fn main() {
         &cdts.into_iter().collect(),
         args.merge_radius,
         &mut global_vertices,
+        &mut global_triangles,
         &mut vertex_kd_tree,
         &mut index_obj,
     )
     .await;
 
     let mut combined_obj = String::new();
-    for vertex in global_vertices.into_iter() {
+    for vertex in global_vertices.iter() {
         writeln!(combined_obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
             .expect("Failed to write vertex");
     }
@@ -351,5 +365,12 @@ async fn main() {
                 .expect("Unable to write to output file");
         }
         None => print!("{}", combined_obj),
+    }
+
+    if let Some(bvh_path) = args.bvh {
+        let bvh = generate_bvh(&global_vertices, &global_triangles);
+        let file = File::create(bvh_path).expect("Unable to create BVH output file");
+        let writer = BufWriter::new(file);
+        serde_json::to_writer_pretty(writer, &bvh).expect("Unable to write to BVH output file");
     }
 }
