@@ -2,7 +2,6 @@ use bvh::{
     aabb::{Aabb, Bounded},
     bounding_hierarchy::BHShape,
     bvh::Bvh,
-    ray::Ray,
 };
 
 fn vertex_from_index(vertices: &[[f32; 3]], index: u32) -> [f32; 3] {
