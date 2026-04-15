@@ -85,22 +85,22 @@ def main(in_file, out_file, verbose):
         else:
             print_debug(f"Skipping {obj.name} because is not a mesh", verbose)
 
-        output = []
-        for layer_index in sorted(layers.keys()):
-            polygons = layers[layer_index]
-            if len(polygons) == 0:
-                continue
+    output = []
+    for layer_index in sorted(layers.keys()):
+        polygons = layers[layer_index]
+        if len(polygons) == 0:
+            continue
 
-            polygons.sort(key=polygon_area)
-            exterior = polygons.pop()
+        polygons.sort(key=polygon_area)
+        exterior = polygons.pop()
 
-            output.append({
-                "exterior": exterior,
-                "obstacles": polygons
-            })
+        output.append({
+            "exterior": exterior,
+            "obstacles": polygons
+        })
 
-        with open(out_file, "w") as file:
-            json.dump(output, file, indent=2)
+    with open(out_file, "w") as file:
+        json.dump(output, file, indent=2)
 
 
 if __name__ == "__main__":
