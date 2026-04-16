@@ -371,6 +371,6 @@ async fn main() {
         let bvh = generate_bvh(&global_vertices, &global_triangles);
         let file = File::create(bvh_path).expect("Unable to create BVH output file");
         let writer = BufWriter::new(file);
-        serde_json::to_writer_pretty(writer, &bvh).expect("Unable to write to BVH output file");
+        pot::to_writer(&bvh, writer).expect("Unable to write to BVH output file");
     }
 }
