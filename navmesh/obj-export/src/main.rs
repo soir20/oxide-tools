@@ -4,13 +4,13 @@ use asset_serialize::{
     gcnk::Gcnk,
 };
 use clap::Parser;
+use flate2::{Compression, write::GzEncoder};
 use glam::{EulerRot, Quat, Vec3A};
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
 use std::{
     collections::{HashMap, HashSet},
     fmt::Write,
     fs::File,
-    io::BufWriter,
     num::NonZero,
     path::PathBuf,
 };
@@ -370,7 +370,12 @@ async fn main() {
     if let Some(bvh_path) = args.bvh {
         let bvh = generate_bvh(&global_vertices, &global_triangles);
         let file = File::create(bvh_path).expect("Unable to create BVH output file");
-        let writer = BufWriter::new(file);
-        pot::to_writer(&bvh, writer).expect("Unable to write to BVH output file");
+        let serialized_bvh: Vec<u8> = pot::to_vec(&bvh).expect("Unable to serialize BVH");
+        let mut encoder = GzEncoder::new(file, Compression::best());
+        std::io::Write::write_all(&mut encoder, &serialized_bvh)
+            .expect("Unable to write to BVH output file");
+        encoder
+            .finish()
+            .expect("Unable to write end of stream to BVH output file");
     }
 }
