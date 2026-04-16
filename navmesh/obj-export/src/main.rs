@@ -41,7 +41,7 @@ struct Cli {
     #[arg(short, long, value_name = "FILE")]
     output: Option<PathBuf>,
 
-    /// Path to bounding volume hierarchy output file. If unspecified, does not construct BVH
+    /// Path to bounding volume hierarchy output file (gzipped). If unspecified, does not construct BVH
     #[arg(long, value_name = "BVH_FILE")]
     bvh: Option<PathBuf>,
 }
