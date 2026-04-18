@@ -19,7 +19,7 @@ use tokio::fs;
 
 use crate::{
     asset_cache::AssetCache,
-    bvh::{BvhFile, BvhReference, CachedBvh, generate_bvh},
+    bvh::{BvhFile, BvhInstance, BvhTemplate, generate_bvh},
 };
 
 mod asset_cache;
@@ -102,8 +102,8 @@ async fn build_terrain(
     chunks: &[(String, Gcnk)],
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
-    global_bvhs: &mut Vec<BvhReference>,
-    bvh_cache: &mut HashMap<String, CachedBvh>,
+    global_bvhs: &mut Vec<BvhInstance>,
+    bvh_cache: &mut HashMap<String, BvhTemplate>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
@@ -173,13 +173,13 @@ async fn build_terrain(
         let bvh_name = format!("{asset_name}_{chunk_index}");
         bvh_cache.insert(
             bvh_name.clone(),
-            CachedBvh {
+            BvhTemplate {
                 bvh,
                 vertices: chunk_vertices,
                 triangles: chunk_triangles,
             },
         );
-        global_bvhs.push(BvhReference {
+        global_bvhs.push(BvhInstance {
             name: bvh_name,
             pos: [0.0; 3],
             rot: [0.0; 3],
@@ -237,8 +237,8 @@ async fn build_objects(
     cdts: &HashMap<String, Cdt>,
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
-    global_bvhs: &mut Vec<BvhReference>,
-    bvh_cache: &mut HashMap<String, CachedBvh>,
+    global_bvhs: &mut Vec<BvhInstance>,
+    bvh_cache: &mut HashMap<String, BvhTemplate>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
@@ -309,13 +309,13 @@ async fn build_objects(
                             let triangles = entry.triangles.clone();
                             let bvh = generate_bvh(&entry.vertices, &triangles);
 
-                            CachedBvh {
+                            BvhTemplate {
                                 bvh,
                                 vertices: entry.vertices.clone(),
                                 triangles,
                             }
                         });
-                        global_bvhs.push(BvhReference {
+                        global_bvhs.push(BvhInstance {
                             name: cdt_name.clone(),
                             pos: [runtime_obj.pos[0], runtime_obj.pos[1], runtime_obj.pos[2]],
                             rot: [runtime_obj.rot[0], runtime_obj.rot[1], runtime_obj.rot[2]],
@@ -354,8 +354,8 @@ async fn main() {
     }
 
     let mut global_vertices: Vec<[f32; 3]> = Vec::new();
-    let mut global_bvhs: Vec<BvhReference> = Vec::new();
-    let mut bvh_cache: HashMap<String, CachedBvh> = HashMap::new();
+    let mut global_bvhs: Vec<BvhInstance> = Vec::new();
+    let mut bvh_cache: HashMap<String, BvhTemplate> = HashMap::new();
     let mut vertex_kd_tree: VertexKdTree = KdTree::new();
 
     let mut index_obj = String::new();

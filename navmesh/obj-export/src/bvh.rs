@@ -71,14 +71,14 @@ pub fn generate_bvh(vertices: &[[f32; 3]], triangles: &[[u16; 3]]) -> Bvh<f32, 3
 }
 
 #[derive(Serialize)]
-pub struct BvhReference {
+pub struct BvhInstance {
     pub name: String,
     pub pos: [f32; 3],
     pub rot: [f32; 3],
 }
 
 #[derive(Serialize)]
-pub struct CachedBvh {
+pub struct BvhTemplate {
     pub bvh: Bvh<f32, 3>,
     pub vertices: Vec<[f32; 3]>,
     pub triangles: Vec<[u16; 3]>,
@@ -86,6 +86,6 @@ pub struct CachedBvh {
 
 #[derive(Serialize)]
 pub struct BvhFile {
-    pub bvhs: HashMap<String, CachedBvh>,
-    pub references: Vec<BvhReference>,
+    pub bvhs: HashMap<String, BvhTemplate>,
+    pub references: Vec<BvhInstance>,
 }
