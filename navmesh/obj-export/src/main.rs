@@ -7,6 +7,7 @@ use clap::Parser;
 use flate2::{Compression, write::GzEncoder};
 use glam::{EulerRot, Quat, Vec3A};
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
+use regex::Regex;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Write,
@@ -334,8 +335,10 @@ async fn main() {
         .await
         .expect("Failed to build asset cache");
 
+    let re =
+        Regex::new(&format!("^{}_-?\\d+_-?\\d+\\.gcnk$", args.zone)).expect("Invalid chunk regex");
     let gcnk_names = asset_cache
-        .filter(&args.zone, |asset_name| asset_name.ends_with(".gcnk"))
+        .filter(&args.zone, |asset_name| re.is_match(asset_name))
         .into_iter();
     let (chunks, errors) = asset_cache.deserialize::<Gcnk>(gcnk_names).await;
     for (asset_name, error) in errors.into_iter() {
