@@ -71,17 +71,17 @@ pub fn generate_bvh(vertices: &[[f32; 3]], triangles: &[[u16; 3]]) -> Bvh<f32, 3
 }
 
 #[derive(Serialize)]
-pub struct BvhInstance {
-    pub name: String,
-    pub pos: [f32; 3],
-    pub rot: [f32; 3],
-}
-
-#[derive(Serialize)]
 pub struct BvhTemplate {
     pub bvh: Bvh<f32, 3>,
     pub vertices: Vec<[f32; 3]>,
     pub triangles: Vec<[u16; 3]>,
+}
+
+#[derive(Serialize)]
+pub struct BvhInstance {
+    pub name: String,
+    pub pos: [f32; 3],
+    pub rot: [f32; 3],
 }
 
 #[derive(Serialize)]
