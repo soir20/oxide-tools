@@ -86,6 +86,6 @@ pub struct BvhTemplate {
 
 #[derive(Serialize)]
 pub struct BvhFile {
-    pub bvhs: HashMap<String, BvhTemplate>,
-    pub references: Vec<BvhInstance>,
+    pub templates: HashMap<String, BvhTemplate>,
+    pub instances: Vec<BvhInstance>,
 }

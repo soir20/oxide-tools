@@ -424,8 +424,8 @@ async fn main() {
 
     if let Some(bvh_path) = args.bvh {
         let bvh = BvhFile {
-            bvhs: bvh_cache,
-            references: global_bvhs,
+            templates: bvh_cache,
+            instances: global_bvhs,
         };
         let file = File::create(bvh_path).expect("Unable to create BVH output file");
         let serialized_bvh: Vec<u8> = pot::to_vec(&bvh).expect("Unable to serialize BVH");
