@@ -8,10 +8,7 @@ use bvh::{
 use serde::Serialize;
 
 fn vertex_from_index(vertices: &[[f32; 3]], index: u32) -> [f32; 3] {
-    let index = usize::try_from(index)
-        .expect("Couldn't convert index to usize")
-        .checked_sub(1)
-        .expect("Triangle indices from the .obj format should be 1-based");
+    let index = usize::try_from(index).expect("Couldn't convert index to usize");
     vertices[index]
 }
 
