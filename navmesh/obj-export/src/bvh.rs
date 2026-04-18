@@ -7,8 +7,8 @@ use bvh::{
 };
 use serde::Serialize;
 
-fn vertex_from_index(vertices: &[[f32; 3]], index: u32) -> [f32; 3] {
-    let index = usize::try_from(index).expect("Couldn't convert index to usize");
+fn vertex_from_index(vertices: &[[f32; 3]], index: u16) -> [f32; 3] {
+    let index = usize::from(index);
     vertices[index]
 }
 
@@ -35,7 +35,7 @@ struct Triangle {
 }
 
 impl Triangle {
-    pub fn from_vertices(vertices: &[[f32; 3]], triangle: [u32; 3]) -> Self {
+    pub fn from_vertices(vertices: &[[f32; 3]], triangle: [u16; 3]) -> Self {
         let v1 = vertex_from_index(vertices, triangle[0]);
         let v2 = vertex_from_index(vertices, triangle[1]);
         let v3 = vertex_from_index(vertices, triangle[2]);
@@ -62,7 +62,7 @@ impl BHShape<f32, 3> for Triangle {
     }
 }
 
-pub fn generate_bvh(vertices: &[[f32; 3]], triangles: &[[u32; 3]]) -> Bvh<f32, 3> {
+pub fn generate_bvh(vertices: &[[f32; 3]], triangles: &[[u16; 3]]) -> Bvh<f32, 3> {
     let mut shapes: Vec<Triangle> = triangles
         .iter()
         .map(|triangle| Triangle::from_vertices(vertices, *triangle))
@@ -81,7 +81,7 @@ pub struct BvhReference {
 pub struct CachedBvh {
     pub bvh: Bvh<f32, 3>,
     pub vertices: Vec<[f32; 3]>,
-    pub triangles: Vec<[u32; 3]>,
+    pub triangles: Vec<[u16; 3]>,
 }
 
 #[derive(Serialize)]

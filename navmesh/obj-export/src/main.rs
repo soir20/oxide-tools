@@ -115,7 +115,7 @@ async fn build_terrain(
             vertex_kd_tree,
             merge_radius,
         );
-        let mut chunk_triangles = Vec::new();
+        let mut chunk_triangles: Vec<[u16; 3]> = Vec::new();
 
         for batch in asset.chunk.render_batches.iter() {
             let batch_index_start: usize = batch
@@ -144,23 +144,22 @@ async fn build_terrain(
                 .expect("Batch vertex end is out of bounds of usize");
             let batch_vertices = &chunk_to_global_indices[batch_vertex_start..batch_vertex_end];
 
-            let mut triangles: Vec<[u32; 3]> = batch_indices
-                .chunks(3)
-                .map(|triangle_indices| {
-                    [
-                        vertex_index(batch_vertices, triangle_indices, 0),
-                        vertex_index(batch_vertices, triangle_indices, 1),
-                        vertex_index(batch_vertices, triangle_indices, 2),
-                    ]
-                })
-                .collect();
-
-            for triangle in triangles.iter() {
+            for triangle in batch_indices.chunks(3).map(|triangle_indices| {
+                [
+                    vertex_index(batch_vertices, triangle_indices, 0),
+                    vertex_index(batch_vertices, triangle_indices, 1),
+                    vertex_index(batch_vertices, triangle_indices, 2),
+                ]
+            }) {
                 writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
                     .expect("Failed to write terrain triangle");
             }
 
-            chunk_triangles.append(&mut triangles);
+            chunk_triangles.extend(
+                batch_indices
+                    .chunks(3)
+                    .map(|triangle| [triangle[0], triangle[1], triangle[2]]),
+            );
         }
 
         let chunk_vertices: Vec<[f32; 3]> = asset
@@ -306,13 +305,7 @@ async fn build_objects(
                         }
 
                         bvh_cache.entry(cdt_name.clone()).or_insert_with(|| {
-                            let triangles = entry
-                                .triangles
-                                .iter()
-                                .map(|triangle| {
-                                    [triangle[0].into(), triangle[1].into(), triangle[2].into()]
-                                })
-                                .collect::<Vec<[u32; 3]>>();
+                            let triangles = entry.triangles.clone();
                             let bvh = generate_bvh(&entry.vertices, &triangles);
 
                             CachedBvh {
