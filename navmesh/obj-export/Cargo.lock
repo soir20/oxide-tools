@@ -638,6 +638,7 @@ dependencies = [
  "kiddo",
  "miniz_oxide 0.9.1",
  "pot",
+ "serde",
  "serde_json",
  "tokio",
 ]

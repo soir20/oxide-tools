@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use bvh::{
     aabb::{Aabb, Bounded},
     bounding_hierarchy::BHShape,
     bvh::Bvh,
 };
+use serde::Serialize;
 
 fn vertex_from_index(vertices: &[[f32; 3]], index: u32) -> [f32; 3] {
     let index = usize::try_from(index)
@@ -68,4 +71,24 @@ pub fn generate_bvh(vertices: &[[f32; 3]], triangles: &[[u32; 3]]) -> Bvh<f32, 3
         .map(|triangle| Triangle::from_vertices(vertices, *triangle))
         .collect();
     Bvh::build(&mut shapes)
+}
+
+#[derive(Serialize)]
+pub struct BvhReference {
+    pub name: String,
+    pub pos: [f32; 3],
+    pub rot: [f32; 3],
+}
+
+#[derive(Serialize)]
+pub struct CachedBvh {
+    pub bvh: Bvh<f32, 3>,
+    pub vertices: Vec<[f32; 3]>,
+    pub triangles: Vec<[u32; 3]>,
+}
+
+#[derive(Serialize)]
+pub struct BvhFile {
+    pub bvhs: HashMap<String, CachedBvh>,
+    pub references: Vec<BvhReference>,
 }
