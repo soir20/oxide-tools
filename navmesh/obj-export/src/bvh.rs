@@ -111,7 +111,7 @@ impl BHShape<f32, 3> for BvhInstance {
 }
 
 #[derive(Serialize)]
-pub struct BvhFile {
+pub struct ZoneBvh {
     pub root: Bvh<f32, 3>,
     pub templates: HashMap<String, BvhTemplate>,
     pub instances: Vec<BvhInstance>,

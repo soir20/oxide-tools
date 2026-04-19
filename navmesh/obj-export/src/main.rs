@@ -20,7 +20,7 @@ use tokio::fs;
 
 use crate::{
     asset_cache::AssetCache,
-    bvh::{BvhFile, BvhInstance, BvhTemplate, generate_bvh, triangle_to_aabb},
+    bvh::{BvhInstance, BvhTemplate, ZoneBvh, generate_bvh, triangle_to_aabb},
 };
 
 mod asset_cache;
@@ -437,7 +437,7 @@ async fn main() {
     }
 
     if let Some(bvh_path) = args.bvh {
-        let bvh = BvhFile {
+        let bvh = ZoneBvh {
             root: Bvh::build(&mut global_bvhs),
             templates: bvh_cache,
             instances: global_bvhs,
