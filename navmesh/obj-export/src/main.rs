@@ -1,3 +1,4 @@
+use ::bvh::{aabb::Aabb, bvh::Bvh};
 use asset_serialize::{
     adr::{Adr, AdrData, CollisionData},
     cdt::Cdt,
@@ -19,7 +20,7 @@ use tokio::fs;
 
 use crate::{
     asset_cache::AssetCache,
-    bvh::{BvhFile, BvhInstance, BvhTemplate, generate_bvh},
+    bvh::{BvhFile, BvhInstance, BvhTemplate, generate_bvh, triangle_to_aabb},
 };
 
 mod asset_cache;
@@ -169,6 +170,16 @@ async fn build_terrain(
             .iter()
             .map(|vertex| vertex.pos)
             .collect();
+        let aabb = chunk_triangles
+            .iter()
+            .map(|triangle| {
+                triangle_to_aabb(
+                    chunk_vertices[usize::from(triangle[0])],
+                    chunk_vertices[usize::from(triangle[1])],
+                    chunk_vertices[usize::from(triangle[2])],
+                )
+            })
+            .fold(Aabb::empty(), |acc, next| acc.join(&next));
         let bvh = generate_bvh(&chunk_vertices, &chunk_triangles);
         let bvh_name = format!("{asset_name}_{chunk_index}");
         bvh_cache.insert(
@@ -179,11 +190,7 @@ async fn build_terrain(
                 triangles: chunk_triangles,
             },
         );
-        global_bvhs.push(BvhInstance {
-            name: bvh_name,
-            pos: [0.0; 3],
-            rot: [0.0; 3],
-        });
+        global_bvhs.push(BvhInstance::new(bvh_name, aabb));
     }
 }
 
@@ -272,6 +279,7 @@ async fn build_objects(
 
                 for (cdt_name, cdt) in cdts {
                     for entry in cdt.entries.iter() {
+                        let mut aabb = Aabb::empty();
                         let local_to_global_indices = add_vertices(
                             entry.vertices.iter().map(|vertex| {
                                 let rotation = Quat::from_euler(
@@ -294,15 +302,25 @@ async fn build_objects(
                             merge_radius,
                         );
 
-                        for triangle_indices in entry.triangles.iter() {
-                            let triangle = [
-                                vertex_index(&local_to_global_indices, triangle_indices, 0),
-                                vertex_index(&local_to_global_indices, triangle_indices, 1),
-                                vertex_index(&local_to_global_indices, triangle_indices, 2),
+                        for local_triangle in entry.triangles.iter() {
+                            let global_triangle = [
+                                vertex_index(&local_to_global_indices, local_triangle, 0),
+                                vertex_index(&local_to_global_indices, local_triangle, 1),
+                                vertex_index(&local_to_global_indices, local_triangle, 2),
                             ];
 
-                            writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
-                                .expect("Failed to write object triangle");
+                            aabb = aabb.join(&triangle_to_aabb(
+                                entry.vertices[usize::from(local_triangle[0])],
+                                entry.vertices[usize::from(local_triangle[1])],
+                                entry.vertices[usize::from(local_triangle[2])],
+                            ));
+
+                            writeln!(
+                                obj,
+                                "f {} {} {}",
+                                global_triangle[0], global_triangle[1], global_triangle[2]
+                            )
+                            .expect("Failed to write object triangle");
                         }
 
                         bvh_cache.entry(cdt_name.clone()).or_insert_with(|| {
@@ -315,11 +333,7 @@ async fn build_objects(
                                 triangles,
                             }
                         });
-                        global_bvhs.push(BvhInstance {
-                            name: cdt_name.clone(),
-                            pos: [runtime_obj.pos[0], runtime_obj.pos[1], runtime_obj.pos[2]],
-                            rot: [runtime_obj.rot[0], runtime_obj.rot[1], runtime_obj.rot[2]],
-                        });
+                        global_bvhs.push(BvhInstance::new(cdt_name.clone(), aabb));
                     }
                 }
             }
@@ -424,6 +438,7 @@ async fn main() {
 
     if let Some(bvh_path) = args.bvh {
         let bvh = BvhFile {
+            root: Bvh::build(&mut global_bvhs),
             templates: bvh_cache,
             instances: global_bvhs,
         };

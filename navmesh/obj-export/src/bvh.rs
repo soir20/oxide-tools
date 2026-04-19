@@ -12,7 +12,7 @@ fn vertex_from_index(vertices: &[[f32; 3]], index: u16) -> [f32; 3] {
     vertices[index]
 }
 
-fn triangle_to_aabb(v1: [f32; 3], v2: [f32; 3], v3: [f32; 3]) -> Aabb<f32, 3> {
+pub fn triangle_to_aabb(v1: [f32; 3], v2: [f32; 3], v3: [f32; 3]) -> Aabb<f32, 3> {
     Aabb::with_bounds(
         [
             v1[0].min(v2[0]).min(v3[0]),
@@ -80,12 +80,39 @@ pub struct BvhTemplate {
 #[derive(Serialize)]
 pub struct BvhInstance {
     pub name: String,
-    pub pos: [f32; 3],
-    pub rot: [f32; 3],
+    pub aabb: Aabb<f32, 3>,
+    pub node_index: usize,
+}
+
+impl BvhInstance {
+    pub fn new(name: String, aabb: Aabb<f32, 3>) -> Self {
+        BvhInstance {
+            name,
+            aabb,
+            node_index: 0,
+        }
+    }
+}
+
+impl Bounded<f32, 3> for BvhInstance {
+    fn aabb(&self) -> Aabb<f32, 3> {
+        self.aabb
+    }
+}
+
+impl BHShape<f32, 3> for BvhInstance {
+    fn set_bh_node_index(&mut self, node_index: usize) {
+        self.node_index = node_index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
 }
 
 #[derive(Serialize)]
 pub struct BvhFile {
+    pub root: Bvh<f32, 3>,
     pub templates: HashMap<String, BvhTemplate>,
     pub instances: Vec<BvhInstance>,
 }
