@@ -79,15 +79,15 @@ pub struct BvhTemplate {
 
 #[derive(Serialize)]
 pub struct BvhInstance {
-    pub name: String,
+    pub id: u32,
     pub aabb: Aabb<f32, 3>,
     pub node_index: usize,
 }
 
 impl BvhInstance {
-    pub fn new(name: String, aabb: Aabb<f32, 3>) -> Self {
+    pub fn new(id: u32, aabb: Aabb<f32, 3>) -> Self {
         BvhInstance {
-            name,
+            id,
             aabb,
             node_index: 0,
         }
@@ -113,6 +113,6 @@ impl BHShape<f32, 3> for BvhInstance {
 #[derive(Serialize)]
 pub struct ZoneBvh {
     pub root: Bvh<f32, 3>,
-    pub templates: HashMap<String, BvhTemplate>,
+    pub templates: HashMap<u32, BvhTemplate>,
     pub instances: Vec<BvhInstance>,
 }

@@ -104,7 +104,7 @@ async fn build_terrain(
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
     global_bvhs: &mut Vec<BvhInstance>,
-    bvh_cache: &mut HashMap<String, BvhTemplate>,
+    bvh_cache: &mut HashMap<String, (u32, BvhTemplate)>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
@@ -182,15 +182,22 @@ async fn build_terrain(
             .fold(Aabb::empty(), |acc, next| acc.join(&next));
         let bvh = generate_bvh(&chunk_vertices, &chunk_triangles);
         let bvh_name = format!("{asset_name}_{chunk_index}");
+        let bvh_id = bvh_cache
+            .len()
+            .try_into()
+            .expect("Unable to convert usize to u32");
         bvh_cache.insert(
             bvh_name.clone(),
-            BvhTemplate {
-                bvh,
-                vertices: chunk_vertices,
-                triangles: chunk_triangles,
-            },
+            (
+                bvh_id,
+                BvhTemplate {
+                    bvh,
+                    vertices: chunk_vertices,
+                    triangles: chunk_triangles,
+                },
+            ),
         );
-        global_bvhs.push(BvhInstance::new(bvh_name, aabb));
+        global_bvhs.push(BvhInstance::new(bvh_id, aabb));
     }
 }
 
@@ -245,7 +252,7 @@ async fn build_objects(
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
     global_bvhs: &mut Vec<BvhInstance>,
-    bvh_cache: &mut HashMap<String, BvhTemplate>,
+    bvh_cache: &mut HashMap<String, (u32, BvhTemplate)>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
@@ -323,17 +330,27 @@ async fn build_objects(
                             .expect("Failed to write object triangle");
                         }
 
-                        bvh_cache.entry(cdt_name.clone()).or_insert_with(|| {
-                            let triangles = entry.triangles.clone();
-                            let bvh = generate_bvh(&entry.vertices, &triangles);
+                        let next_bvh_id = bvh_cache
+                            .len()
+                            .try_into()
+                            .expect("Unable to convert usize to u32");
+                        let bvh_id = bvh_cache
+                            .entry(cdt_name.clone())
+                            .or_insert_with(|| {
+                                let triangles = entry.triangles.clone();
+                                let bvh = generate_bvh(&entry.vertices, &triangles);
 
-                            BvhTemplate {
-                                bvh,
-                                vertices: entry.vertices.clone(),
-                                triangles,
-                            }
-                        });
-                        global_bvhs.push(BvhInstance::new(cdt_name.clone(), aabb));
+                                (
+                                    next_bvh_id,
+                                    BvhTemplate {
+                                        bvh,
+                                        vertices: entry.vertices.clone(),
+                                        triangles,
+                                    },
+                                )
+                            })
+                            .0;
+                        global_bvhs.push(BvhInstance::new(bvh_id, aabb));
                     }
                 }
             }
@@ -369,7 +386,7 @@ async fn main() {
 
     let mut global_vertices: Vec<[f32; 3]> = Vec::new();
     let mut global_bvhs: Vec<BvhInstance> = Vec::new();
-    let mut bvh_cache: HashMap<String, BvhTemplate> = HashMap::new();
+    let mut bvh_cache: HashMap<String, (u32, BvhTemplate)> = HashMap::new();
     let mut vertex_kd_tree: VertexKdTree = KdTree::new();
 
     let mut index_obj = String::new();
@@ -439,7 +456,10 @@ async fn main() {
     if let Some(bvh_path) = args.bvh {
         let bvh = ZoneBvh {
             root: Bvh::build(&mut global_bvhs),
-            templates: bvh_cache,
+            templates: bvh_cache
+                .into_iter()
+                .map(|(_, (index, bvh))| (index, bvh))
+                .collect(),
             instances: global_bvhs,
         };
         let file = File::create(bvh_path).expect("Unable to create BVH output file");
