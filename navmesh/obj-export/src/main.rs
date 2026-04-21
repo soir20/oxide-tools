@@ -1,4 +1,3 @@
-use ::bvh::{aabb::Aabb, bvh::Bvh};
 use asset_serialize::{
     adr::{Adr, AdrData, CollisionData},
     cdt::Cdt,
@@ -8,6 +7,7 @@ use clap::Parser;
 use flate2::{Compression, write::GzEncoder};
 use glam::{EulerRot, Quat, Vec3A};
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
+use oxide_bvh::{Bvh, BvhInstance, BvhTemplate};
 use regex::Regex;
 use std::{
     collections::{HashMap, HashSet},
@@ -18,13 +18,9 @@ use std::{
 };
 use tokio::fs;
 
-use crate::{
-    asset_cache::AssetCache,
-    bvh::{BvhInstance, BvhTemplate, ZoneBvh, generate_bvh, triangle_to_aabb},
-};
+use crate::asset_cache::AssetCache;
 
 mod asset_cache;
-mod bvh;
 
 /// Contains program arguments parsed from the command line
 #[derive(Parser)]
@@ -57,14 +53,10 @@ fn vertex_index(
     chunk_to_global_indices: &[usize],
     triangle_vertex_indices: &[u16],
     index_in_triangle: usize,
-) -> u32 {
+) -> usize {
     let chunk_vertex_index: usize = triangle_vertex_indices[index_in_triangle].into();
-    let index: u32 = chunk_to_global_indices[chunk_vertex_index]
-        .try_into()
-        .expect("Couldn't convert index to u32");
-    index
-        .checked_add(1)
-        .expect("Indices must be < 4_294_967_295")
+    let index = chunk_to_global_indices[chunk_vertex_index];
+    index.checked_add(1).expect("Index outside usize")
 }
 
 fn add_vertices(
@@ -170,34 +162,28 @@ async fn build_terrain(
             .iter()
             .map(|vertex| vertex.pos)
             .collect();
-        let aabb = chunk_triangles
-            .iter()
-            .map(|triangle| {
-                triangle_to_aabb(
-                    chunk_vertices[usize::from(triangle[0])],
-                    chunk_vertices[usize::from(triangle[1])],
-                    chunk_vertices[usize::from(triangle[2])],
-                )
-            })
-            .fold(Aabb::empty(), |acc, next| acc.join(&next));
-        let bvh = generate_bvh(&chunk_vertices, &chunk_triangles);
         let bvh_name = format!("{asset_name}_{chunk_index}");
         let bvh_id = bvh_cache
             .len()
             .try_into()
             .expect("Unable to convert usize to u32");
+        global_bvhs.push(BvhInstance::new(
+            bvh_id,
+            [0.0; 3],
+            [0.0; 3],
+            1.0,
+            chunk_triangles.iter().map(|triangle| {
+                [
+                    chunk_vertices[usize::from(triangle[0])],
+                    chunk_vertices[usize::from(triangle[1])],
+                    chunk_vertices[usize::from(triangle[2])],
+                ]
+            }),
+        ));
         bvh_cache.insert(
             bvh_name.clone(),
-            (
-                bvh_id,
-                BvhTemplate {
-                    bvh,
-                    vertices: chunk_vertices,
-                    triangles: chunk_triangles,
-                },
-            ),
+            (bvh_id, BvhTemplate::new(chunk_vertices, chunk_triangles)),
         );
-        global_bvhs.push(BvhInstance::new(bvh_id, aabb));
     }
 }
 
@@ -286,7 +272,6 @@ async fn build_objects(
 
                 for (cdt_name, cdt) in cdts {
                     for entry in cdt.entries.iter() {
-                        let mut aabb = Aabb::empty();
                         let local_to_global_indices = add_vertices(
                             entry.vertices.iter().map(|vertex| {
                                 let rotation = Quat::from_euler(
@@ -309,19 +294,19 @@ async fn build_objects(
                             merge_radius,
                         );
 
-                        for local_triangle in entry.triangles.iter() {
-                            let global_triangle = [
-                                vertex_index(&local_to_global_indices, local_triangle, 0),
-                                vertex_index(&local_to_global_indices, local_triangle, 1),
-                                vertex_index(&local_to_global_indices, local_triangle, 2),
-                            ];
+                        let global_triangles: Vec<[usize; 3]> = entry
+                            .triangles
+                            .iter()
+                            .map(|local_triangle| {
+                                [
+                                    vertex_index(&local_to_global_indices, local_triangle, 0),
+                                    vertex_index(&local_to_global_indices, local_triangle, 1),
+                                    vertex_index(&local_to_global_indices, local_triangle, 2),
+                                ]
+                            })
+                            .collect();
 
-                            aabb = aabb.join(&triangle_to_aabb(
-                                entry.vertices[usize::from(local_triangle[0])],
-                                entry.vertices[usize::from(local_triangle[1])],
-                                entry.vertices[usize::from(local_triangle[2])],
-                            ));
-
+                        for global_triangle in global_triangles.iter() {
                             writeln!(
                                 obj,
                                 "f {} {} {}",
@@ -337,20 +322,28 @@ async fn build_objects(
                         let bvh_id = bvh_cache
                             .entry(cdt_name.clone())
                             .or_insert_with(|| {
-                                let triangles = entry.triangles.clone();
-                                let bvh = generate_bvh(&entry.vertices, &triangles);
-
                                 (
                                     next_bvh_id,
-                                    BvhTemplate {
-                                        bvh,
-                                        vertices: entry.vertices.clone(),
-                                        triangles,
-                                    },
+                                    BvhTemplate::new(
+                                        entry.vertices.clone(),
+                                        entry.triangles.clone(),
+                                    ),
                                 )
                             })
                             .0;
-                        global_bvhs.push(BvhInstance::new(bvh_id, aabb));
+                        global_bvhs.push(BvhInstance::new(
+                            bvh_id,
+                            [runtime_obj.pos[0], runtime_obj.pos[1], runtime_obj.pos[2]],
+                            [runtime_obj.rot[0], runtime_obj.rot[1], runtime_obj.rot[2]],
+                            runtime_obj.scale,
+                            global_triangles.iter().map(|triangle| {
+                                [
+                                    global_vertices[triangle[0]],
+                                    global_vertices[triangle[1]],
+                                    global_vertices[triangle[2]],
+                                ]
+                            }),
+                        ));
                     }
                 }
             }
@@ -454,14 +447,13 @@ async fn main() {
     }
 
     if let Some(bvh_path) = args.bvh {
-        let bvh = ZoneBvh {
-            root: Bvh::build(&mut global_bvhs),
-            templates: bvh_cache
+        let bvh = Bvh::new(
+            bvh_cache
                 .into_iter()
                 .map(|(_, (index, bvh))| (index, bvh))
                 .collect(),
-            instances: global_bvhs,
-        };
+            global_bvhs,
+        );
         let file = File::create(bvh_path).expect("Unable to create BVH output file");
         let serialized_bvh: Vec<u8> = pot::to_vec(&bvh).expect("Unable to serialize BVH");
         let mut encoder = GzEncoder::new(file, Compression::best());

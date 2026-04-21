@@ -640,12 +640,12 @@ name = "navmesh-obj-export"
 version = "1.0.0"
 dependencies = [
  "asset_serialize",
- "bvh",
  "clap",
  "flate2",
  "glam 0.32.1",
  "kiddo",
  "miniz_oxide 0.9.1",
+ "oxide_bvh",
  "pot",
  "regex",
  "serde",
@@ -752,6 +752,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f4779c6901a562440c3786d08192c6fbda7c1c2060edd10006b05ee35d10f2d"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "oxide_bvh"
+version = "0.1.0"
+source = "git+https://github.com/soir20/oxide?rev=02930cce531c336330d1f2d8bb00158d55c6beac#02930cce531c336330d1f2d8bb00158d55c6beac"
+dependencies = [
+ "bvh",
+ "flate2",
+ "glam 0.30.10",
+ "pot",
+ "serde",
 ]
 
 [[package]]
