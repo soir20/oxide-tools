@@ -50,12 +50,12 @@ struct Cli {
 type VertexKdTree = KdTree<f32, usize, 3, 1024, u32>;
 
 fn vertex_index(
-    chunk_to_global_indices: &[usize],
+    local_to_global_indices: &[usize],
     triangle_vertex_indices: &[u16],
     index_in_triangle: usize,
 ) -> usize {
     let chunk_vertex_index: usize = triangle_vertex_indices[index_in_triangle].into();
-    let index = chunk_to_global_indices[chunk_vertex_index];
+    let index = local_to_global_indices[chunk_vertex_index];
     index.checked_add(1).expect("Index outside usize")
 }
 
@@ -294,19 +294,13 @@ async fn build_objects(
                             merge_radius,
                         );
 
-                        let global_triangles: Vec<[usize; 3]> = entry
-                            .triangles
-                            .iter()
-                            .map(|local_triangle| {
-                                [
-                                    vertex_index(&local_to_global_indices, local_triangle, 0),
-                                    vertex_index(&local_to_global_indices, local_triangle, 1),
-                                    vertex_index(&local_to_global_indices, local_triangle, 2),
-                                ]
-                            })
-                            .collect();
+                        for local_triangle in entry.triangles.iter() {
+                            let global_triangle = [
+                                vertex_index(&local_to_global_indices, local_triangle, 0),
+                                vertex_index(&local_to_global_indices, local_triangle, 1),
+                                vertex_index(&local_to_global_indices, local_triangle, 2),
+                            ];
 
-                        for global_triangle in global_triangles.iter() {
                             writeln!(
                                 obj,
                                 "f {} {} {}",
@@ -336,11 +330,14 @@ async fn build_objects(
                             [runtime_obj.pos[0], runtime_obj.pos[1], runtime_obj.pos[2]],
                             [runtime_obj.rot[0], runtime_obj.rot[1], runtime_obj.rot[2]],
                             runtime_obj.scale,
-                            global_triangles.iter().map(|triangle| {
+                            entry.triangles.iter().map(|triangle| {
                                 [
-                                    global_vertices[triangle[0]],
-                                    global_vertices[triangle[1]],
-                                    global_vertices[triangle[2]],
+                                    global_vertices
+                                        [local_to_global_indices[usize::from(triangle[0])]],
+                                    global_vertices
+                                        [local_to_global_indices[usize::from(triangle[1])]],
+                                    global_vertices
+                                        [local_to_global_indices[usize::from(triangle[2])]],
                                 ]
                             }),
                         ));
