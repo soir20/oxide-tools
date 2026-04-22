@@ -14,7 +14,7 @@ flate2 = "1.1.9"
 glam = "0.32.1"
 kiddo = "5.3.0"
 miniz_oxide = "0.9.1"
-oxide_bvh = { git = "https://github.com/soir20/oxide", rev = "02930cce531c336330d1f2d8bb00158d55c6beac" }
+oxide_bvh = { git = "https://github.com/soir20/oxide", rev = "af2b1578507b47610d4e0c7833d904c29a5e0e7f" }
 pot = "3.0.1"
 regex = "1.12.3"
 serde = "1.0.228"

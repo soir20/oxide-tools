@@ -757,7 +757,7 @@ dependencies = [
 [[package]]
 name = "oxide_bvh"
 version = "0.1.0"
-source = "git+https://github.com/soir20/oxide?rev=02930cce531c336330d1f2d8bb00158d55c6beac#02930cce531c336330d1f2d8bb00158d55c6beac"
+source = "git+https://github.com/soir20/oxide?rev=af2b1578507b47610d4e0c7833d904c29a5e0e7f#af2b1578507b47610d4e0c7833d904c29a5e0e7f"
 dependencies = [
  "bvh",
  "flate2",
