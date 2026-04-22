@@ -47,7 +47,7 @@ struct Cli {
     bvh: Option<PathBuf>,
 }
 
-type VertexKdTree = KdTree<f32, usize, 3, 1024, u32>;
+type VertexKdTree = KdTree<f32, usize, 3, 2048, u32>;
 
 fn vertex_index(
     local_to_global_indices: &[usize],
