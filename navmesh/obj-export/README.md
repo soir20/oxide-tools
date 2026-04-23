@@ -5,7 +5,7 @@
 Run the tool with the `--help` flag to view a list of the tool's options.
 
 ```
-Usage: navmesh-obj-export.exe [OPTIONS] --path <DIR> --zone <ZONE> --merge-radius <RADIUS>
+Usage: navmesh-obj-export [OPTIONS] --path <DIR> --zone <ZONE> --merge-radius <RADIUS>
 
 Options:
   -p, --path <DIR>             Path to assets directory
