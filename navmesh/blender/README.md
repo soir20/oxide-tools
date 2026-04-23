@@ -18,7 +18,7 @@ Generates a layered navmesh from selected polygons in NAVMESH# vertex groups
 options:
   -h, --help         show this help message and exit
   --infile INFILE    Path of the input .blend file
-  --outfile OUTFILE  Path of the output .yaml file
+  --outfile OUTFILE  Path of the output .json file
   --verbose          Whether to print verbose output
 ```
 

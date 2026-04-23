@@ -8,8 +8,15 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-asset_serialize = { git = "https://github.com/soir20/oxide", rev = "400eaa96b40deca4b2ec989651c0a723d993bdcb" }
+asset_serialize = { git = "https://github.com/soir20/oxide", rev = "4f4671daafb4fed2792a5558e51cde59d3bb8478" }
 clap = { version = "4.6.0", features = ["derive"] }
+flate2 = "1.1.9"
 glam = "0.32.1"
 kiddo = "5.3.0"
+miniz_oxide = "0.9.1"
+oxide_bvh = { git = "https://github.com/soir20/oxide", rev = "4f4671daafb4fed2792a5558e51cde59d3bb8478" }
+pot = "3.0.1"
+regex = "1.12.3"
+serde = "1.0.228"
+serde_json = "1.0.149"
 tokio = { version = "1.50.0", features = ["fs", "io-util", "macros", "rt", "rt-multi-thread"] }

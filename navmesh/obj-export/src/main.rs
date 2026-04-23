@@ -4,11 +4,15 @@ use asset_serialize::{
     gcnk::Gcnk,
 };
 use clap::Parser;
+use flate2::{Compression, write::GzEncoder};
 use glam::{EulerRot, Quat, Vec3A};
 use kiddo::{SquaredEuclidean, float::kdtree::KdTree};
+use oxide_bvh::{Bvh, BvhInstance, BvhTemplate};
+use regex::Regex;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Write,
+    fs::File,
     num::NonZero,
     path::PathBuf,
 };
@@ -34,25 +38,25 @@ struct Cli {
     #[arg(short = 'r', long, value_name = "RADIUS")]
     merge_radius: f32,
 
-    /// Path to outout file. If unspecified, prints to stdout
+    /// Path to output file. If unspecified, prints to stdout
     #[arg(short, long, value_name = "FILE")]
     output: Option<PathBuf>,
+
+    /// Path to bounding volume hierarchy output file (gzipped). If unspecified, does not construct BVH
+    #[arg(long, value_name = "BVH_FILE")]
+    bvh: Option<PathBuf>,
 }
 
-type VertexKdTree = KdTree<f32, usize, 3, 1024, u32>;
+type VertexKdTree = KdTree<f32, usize, 3, 2048, u32>;
 
 fn vertex_index(
-    chunk_to_global_indices: &[usize],
+    local_to_global_indices: &[usize],
     triangle_vertex_indices: &[u16],
     index_in_triangle: usize,
-) -> u32 {
+) -> usize {
     let chunk_vertex_index: usize = triangle_vertex_indices[index_in_triangle].into();
-    let index: u32 = chunk_to_global_indices[chunk_vertex_index]
-        .try_into()
-        .expect("Couldn't convert index to u32");
-    index
-        .checked_add(1)
-        .expect("Indices must be < 4_294_967_295")
+    let index = local_to_global_indices[chunk_vertex_index];
+    index.checked_add(1).expect("Index outside usize")
 }
 
 fn add_vertices(
@@ -91,18 +95,21 @@ async fn build_terrain(
     chunks: &[(String, Gcnk)],
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
+    global_bvhs: &mut Vec<BvhInstance>,
+    bvh_cache: &mut HashMap<String, (u32, BvhTemplate)>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
     writeln!(obj, "g terrain").expect("Failed to write terrain group");
 
-    for (_, asset) in chunks.iter() {
+    for (chunk_index, (asset_name, asset)) in chunks.iter().enumerate() {
         let chunk_to_global_indices = add_vertices(
             asset.chunk.vertices.iter().map(|vertex| vertex.pos),
             global_vertices,
             vertex_kd_tree,
             merge_radius,
         );
+        let mut chunk_triangles: Vec<[u16; 3]> = Vec::new();
 
         for batch in asset.chunk.render_batches.iter() {
             let batch_index_start: usize = batch
@@ -131,16 +138,52 @@ async fn build_terrain(
                 .expect("Batch vertex end is out of bounds of usize");
             let batch_vertices = &chunk_to_global_indices[batch_vertex_start..batch_vertex_end];
 
-            for triangle_indices in batch_indices.chunks(3) {
-                let triangle = [
+            for triangle in batch_indices.chunks(3).map(|triangle_indices| {
+                [
                     vertex_index(batch_vertices, triangle_indices, 0),
                     vertex_index(batch_vertices, triangle_indices, 1),
                     vertex_index(batch_vertices, triangle_indices, 2),
-                ];
+                ]
+            }) {
                 writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
                     .expect("Failed to write terrain triangle");
             }
+
+            chunk_triangles.extend(
+                batch_indices
+                    .chunks(3)
+                    .map(|triangle| [triangle[0], triangle[1], triangle[2]]),
+            );
         }
+
+        let chunk_vertices: Vec<[f32; 3]> = asset
+            .chunk
+            .vertices
+            .iter()
+            .map(|vertex| vertex.pos)
+            .collect();
+        let bvh_name = format!("{asset_name}_{chunk_index}");
+        let bvh_id = bvh_cache
+            .len()
+            .try_into()
+            .expect("Unable to convert usize to u32");
+        global_bvhs.push(BvhInstance::new(
+            bvh_id,
+            [0.0; 3],
+            [0.0; 3],
+            1.0,
+            chunk_triangles.iter().map(|triangle| {
+                [
+                    chunk_vertices[usize::from(triangle[0])],
+                    chunk_vertices[usize::from(triangle[1])],
+                    chunk_vertices[usize::from(triangle[2])],
+                ]
+            }),
+        ));
+        bvh_cache.insert(
+            bvh_name.clone(),
+            (bvh_id, BvhTemplate::new(chunk_vertices, chunk_triangles)),
+        );
     }
 }
 
@@ -194,6 +237,8 @@ async fn build_objects(
     cdts: &HashMap<String, Cdt>,
     merge_radius: f32,
     global_vertices: &mut Vec<[f32; 3]>,
+    global_bvhs: &mut Vec<BvhInstance>,
+    bvh_cache: &mut HashMap<String, (u32, BvhTemplate)>,
     vertex_kd_tree: &mut VertexKdTree,
     obj: &mut String,
 ) {
@@ -211,7 +256,7 @@ async fn build_objects(
                 };
 
                 let cdts = cdt_names.iter().filter_map(|cdt_name| {
-                    let cdt = cdts.get(cdt_name);
+                    let cdt = cdts.get(cdt_name).map(|cdt| (cdt_name, cdt));
                     if cdt.is_none() {
                         eprintln!("Failed to find CDT {}", cdt_name);
                     }
@@ -225,7 +270,7 @@ async fn build_objects(
                 )
                 .expect("Failed to write object group");
 
-                for cdt in cdts {
+                for (cdt_name, cdt) in cdts {
                     for entry in cdt.entries.iter() {
                         let local_to_global_indices = add_vertices(
                             entry.vertices.iter().map(|vertex| {
@@ -249,16 +294,53 @@ async fn build_objects(
                             merge_radius,
                         );
 
-                        for triangle_indices in entry.triangles.iter() {
-                            let triangle = [
-                                vertex_index(&local_to_global_indices, triangle_indices, 0),
-                                vertex_index(&local_to_global_indices, triangle_indices, 1),
-                                vertex_index(&local_to_global_indices, triangle_indices, 2),
+                        for local_triangle in entry.triangles.iter() {
+                            let global_triangle = [
+                                vertex_index(&local_to_global_indices, local_triangle, 0),
+                                vertex_index(&local_to_global_indices, local_triangle, 1),
+                                vertex_index(&local_to_global_indices, local_triangle, 2),
                             ];
 
-                            writeln!(obj, "f {} {} {}", triangle[0], triangle[1], triangle[2])
-                                .expect("Failed to write object triangle");
+                            writeln!(
+                                obj,
+                                "f {} {} {}",
+                                global_triangle[0], global_triangle[1], global_triangle[2]
+                            )
+                            .expect("Failed to write object triangle");
                         }
+
+                        let next_bvh_id = bvh_cache
+                            .len()
+                            .try_into()
+                            .expect("Unable to convert usize to u32");
+                        let bvh_id = bvh_cache
+                            .entry(cdt_name.clone())
+                            .or_insert_with(|| {
+                                (
+                                    next_bvh_id,
+                                    BvhTemplate::new(
+                                        entry.vertices.clone(),
+                                        entry.triangles.clone(),
+                                    ),
+                                )
+                            })
+                            .0;
+                        global_bvhs.push(BvhInstance::new(
+                            bvh_id,
+                            [runtime_obj.pos[0], runtime_obj.pos[1], runtime_obj.pos[2]],
+                            [runtime_obj.rot[0], runtime_obj.rot[1], runtime_obj.rot[2]],
+                            runtime_obj.scale,
+                            entry.triangles.iter().map(|triangle| {
+                                [
+                                    global_vertices
+                                        [local_to_global_indices[usize::from(triangle[0])]],
+                                    global_vertices
+                                        [local_to_global_indices[usize::from(triangle[1])]],
+                                    global_vertices
+                                        [local_to_global_indices[usize::from(triangle[2])]],
+                                ]
+                            }),
+                        ));
                     }
                 }
             }
@@ -274,8 +356,10 @@ async fn main() {
         .await
         .expect("Failed to build asset cache");
 
+    let re =
+        Regex::new(&format!("^{}_-?\\d+_-?\\d+\\.gcnk$", args.zone)).expect("Invalid chunk regex");
     let gcnk_names = asset_cache
-        .filter(&args.zone, |asset_name| asset_name.ends_with(".gcnk"))
+        .filter(&args.zone, |asset_name| re.is_match(asset_name))
         .into_iter();
     let (chunks, errors) = asset_cache.deserialize::<Gcnk>(gcnk_names).await;
     for (asset_name, error) in errors.into_iter() {
@@ -291,6 +375,8 @@ async fn main() {
     }
 
     let mut global_vertices: Vec<[f32; 3]> = Vec::new();
+    let mut global_bvhs: Vec<BvhInstance> = Vec::new();
+    let mut bvh_cache: HashMap<String, (u32, BvhTemplate)> = HashMap::new();
     let mut vertex_kd_tree: VertexKdTree = KdTree::new();
 
     let mut index_obj = String::new();
@@ -298,6 +384,8 @@ async fn main() {
         &chunks,
         args.merge_radius,
         &mut global_vertices,
+        &mut global_bvhs,
+        &mut bvh_cache,
         &mut vertex_kd_tree,
         &mut index_obj,
     )
@@ -332,13 +420,15 @@ async fn main() {
         &cdts.into_iter().collect(),
         args.merge_radius,
         &mut global_vertices,
+        &mut global_bvhs,
+        &mut bvh_cache,
         &mut vertex_kd_tree,
         &mut index_obj,
     )
     .await;
 
     let mut combined_obj = String::new();
-    for vertex in global_vertices.into_iter() {
+    for vertex in global_vertices.iter() {
         writeln!(combined_obj, "v {} {} {}", vertex[0], vertex[1], vertex[2])
             .expect("Failed to write vertex");
     }
@@ -351,5 +441,23 @@ async fn main() {
                 .expect("Unable to write to output file");
         }
         None => print!("{}", combined_obj),
+    }
+
+    if let Some(bvh_path) = args.bvh {
+        let bvh = Bvh::new(
+            bvh_cache
+                .into_iter()
+                .map(|(_, (index, bvh))| (index, bvh))
+                .collect(),
+            global_bvhs,
+        );
+        let file = File::create(bvh_path).expect("Unable to create BVH output file");
+        let serialized_bvh: Vec<u8> = pot::to_vec(&bvh).expect("Unable to serialize BVH");
+        let mut encoder = GzEncoder::new(file, Compression::best());
+        std::io::Write::write_all(&mut encoder, &serialized_bvh)
+            .expect("Unable to write to BVH output file");
+        encoder
+            .finish()
+            .expect("Unable to write end of stream to BVH output file");
     }
 }
